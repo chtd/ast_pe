@@ -1,0 +1,7 @@
+*.s
+*.swp
+*.pyc
+*.c
+*.out
+ast_pe.egg-info/
+env/
