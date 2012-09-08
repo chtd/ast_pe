@@ -19,7 +19,7 @@ def eval_ast(tree):
     return locals()[tree.body[0].name]
 
 
-def ast_equal(tree1, tree2):
+def eq_ast(tree1, tree2):
     ''' Returns whether AST tree1 is equal to tree2 '''
     return ast.dump(tree1) == ast.dump(tree2)
 

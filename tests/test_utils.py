@@ -30,10 +30,10 @@ class TestCase(unittest.TestCase):
                 [Return(BinOp(Name('x', Load()), Add(), Name('y', Load())))], 
                 [Return(Subscript(Name('kw', Load()), 
                     Index(Str('zzz')), Load()))])], [])])
-        self.assertTrue(ast_pe.utils.ast_equal(tree, expected_tree))
-        self.assertFalse(ast_pe.utils.ast_equal(
+        self.assertTrue(ast_pe.utils.eq_ast(tree, expected_tree))
+        self.assertFalse(ast_pe.utils.eq_ast(
             tree, ast_pe.utils.get_ast(sample_fn2)))
-        self.assertFalse(ast_pe.utils.ast_equal(
+        self.assertFalse(ast_pe.utils.eq_ast(
             tree, ast_pe.utils.get_ast(sample_fn3)))
 
     def test_compile_ast(self):
@@ -65,6 +65,3 @@ def sample_fn3(x, y, foo='bar', **kwargs):
     else:
         return kwargs['zzz']
 
-
-if __name__ == '__main__':
-    unittest.main()

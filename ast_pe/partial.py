@@ -5,7 +5,7 @@ import ast
 from ast_pe.utils import get_ast, eval_ast
 
 
-def specialized(fn, *args, **kwargs):
+def specialized_fn(fn, *args, **kwargs):
     ''' Return specialized version of fn, fixing given args and kwargs,
     just as functools.partial does, but specialized function should be faster
     '''
