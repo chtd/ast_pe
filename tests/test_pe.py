@@ -1,9 +1,10 @@
 # -*- encoding: utf-8 -*-
 
+import ast
 import unittest
 import functools
 
-from ast_pe.utils import get_ast, eq_ast
+from ast_pe.utils import get_ast
 from ast_pe.specializer import specialized_ast, specialized_fn
 
 
@@ -19,6 +20,10 @@ class TestSpecializer(unittest.TestCase):
                 1.0 / 2 * 4)
         self.assertEqual(specialized_fn(args_kwargs, 2, c=4)(6),
                 2.0 / 6 * 4)
+    
+    def test_const_arg_substitution(self):
+        self._test_partial_ast(
+                const_arg_substitution, const_arg_substitution_1)
 
     def test_if_on_stupid_power(self):
         kwargs_list = [{'x': v} for v in [0, 1, 0.01, 5e10]]
@@ -33,10 +38,12 @@ class TestSpecializer(unittest.TestCase):
         ''' Check that partial evaluations of base_fn with args taken
         from partial_fn.__doc__ gives the same AST as partial_fn
         '''
-        partial_kwargs = eval(partial_fn.__doc__) 
-        partial_ast = specialized_ast(base_fn, **partial_kwargs)
+        partial_kwargs = eval(partial_fn.__doc__)
         expected_ast = get_ast(partial_fn)
-        self.assertTrue(eq_ast(partial_ast, expected_ast))
+        expected_ast.body[0].name = base_fn.__name__ # rename fn
+        del expected_ast.body[0].body[0] # remove __doc__
+        partial_ast, _ = specialized_ast(base_fn, **partial_kwargs)
+        self.assertEqual(ast.dump(partial_ast), ast.dump(expected_ast))
 
     def _test_partial_fn(self, base_fn, partial_fn, kwargs_list):
         ''' Check that partial evaluation of base_fn with partial_args
@@ -88,6 +95,14 @@ class TestSpecializer(unittest.TestCase):
 def args_kwargs(a, b, c=None):
     return 1.0 * a / b * (c or 3)
 
+#=======================================================
+
+def const_arg_substitution(n, m):
+    return n + m
+
+def const_arg_substitution_1(m):
+    '{"n": 1}'
+    return 1 + m
 
 #=======================================================
 

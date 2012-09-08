@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 import ast
+import numbers
 
 from ast_pe.utils import get_ast, eval_ast
 
@@ -39,6 +40,27 @@ class PartialEvaluator(ast.NodeTransformer):
         self.args = args
         self.kwargs = kwargs
         super(PartialEvaluator, self).__init__()
-
-    def generic_visit(self, node):
+    
+    def visit_Name(self, node):
+        self.generic_visit(node)
+        if node.id in self.bindings:
+            value = self.bindings[node.id]
+            if isinstance(value, numbers.Number):
+                return ast.Num(value, 
+                        lineno=node.lineno, col_offset=node.col_offset)
+            else:
+                pass # TODO
         return node
+
+    """
+    def visit_If(self, node):
+        self.generic_visit(node)
+        if isinstance(node.test, ast.Compare):
+            # pass if isinstance
+        #import pdb; pdb.set_trace()
+        print
+        print 'visit_If', ast.dump(node)
+        print
+        return node
+    """
+
