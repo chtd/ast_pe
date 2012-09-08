@@ -10,13 +10,14 @@ def get_ast(fn):
     return ast.parse(inspect.getsource(fn))
 
 
-def eval_ast(tree):
+def eval_ast(tree, globals_=None):
     ''' Evaluate AST tree, which sould contain only one root node
     '''
     assert isinstance(tree, ast.Module) and len(tree.body) == 1
     code_object = compile(tree, '<nofile>', 'exec')
-    eval(code_object)
-    return locals()[tree.body[0].name]
+    locals_ = {}
+    eval(code_object, globals_, locals_)
+    return locals_[tree.body[0].name]
 
 
 def eq_ast(tree1, tree2):

@@ -2,19 +2,32 @@
 
 import unittest
 import functools
-from collections import Iterable
 
 from ast_pe.utils import get_ast, eq_ast
-from ast_pe.partial import specialized_ast, specialized_fn
+from ast_pe.specializer import specialized_ast, specialized_fn
 
 
-class TestCase(unittest.TestCase):
+class TestSpecializer(unittest.TestCase):
+    def test_args_handling(self):
+        self.assertEqual(specialized_fn(args_kwargs_test, 1)(2),
+                1.0 / 2 * 3)
+        self.assertEqual(specialized_fn(args_kwargs_test, 1, 2, 1)(),
+                1.0 / 2 * 1)
+
+    def test_kwargs_handling(self):
+        self.assertEqual(specialized_fn(args_kwargs_test, c=4)(1, 2),
+                1.0 / 2 * 4)
+        self.assertEqual(specialized_fn(args_kwargs_test, 2, c=4)(6),
+                2.0 / 6 * 4)
+
     def test_if_on_stupid_power(self):
         kwargs_list = [{'x': v} for v in [0, 1, 0.01, 5e10]]
         for fn in (stupid_power_foo, 
                 stupid_power_0, stupid_power_1, stupid_power_2):
             self._test_partial_ast(stupid_power, fn)
             self._test_partial_fn(stupid_power, fn, kwargs_list)
+
+    # Utility methods
 
     def _test_partial_ast(self, base_fn, partial_fn):
         ''' Check that partial evaluations of base_fn with args taken
@@ -46,10 +59,14 @@ class TestCase(unittest.TestCase):
         ''' Check that functions are the same, or raise the same exception
         '''
         v1 = v2 = e1 = e2 = None
-        try: v1 = fn1(*args, **kwargs)
-        except Exception as e1: pass
-        try: v2 = fn2(*args, **kwargs)
-        except Exception as e2: pass
+        try: 
+            v1 = fn1(*args, **kwargs)
+        except Exception as e1:
+            pass
+        try:
+            v2 = fn2(*args, **kwargs)
+        except Exception as e2:
+            pass
         if e1 or e2:
             # reraise exception, if there is only one
             if e1 is None: fn2(*args, **kwargs)
@@ -63,6 +80,13 @@ class TestCase(unittest.TestCase):
             self.assertIsNone(e1)
             self.assertIsNone(e2)
             self.assertEqual(v1, v2)
+
+
+# Functions that are specialized
+
+
+def args_kwargs_test(a, b, c=None):
+    return 1.0 * a / b * (c or 3)
 
 
 #=======================================================
