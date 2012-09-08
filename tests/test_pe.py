@@ -9,15 +9,15 @@ from ast_pe.specializer import specialized_ast, specialized_fn
 
 class TestSpecializer(unittest.TestCase):
     def test_args_handling(self):
-        self.assertEqual(specialized_fn(args_kwargs_test, 1)(2),
+        self.assertEqual(specialized_fn(args_kwargs, 1)(2),
                 1.0 / 2 * 3)
-        self.assertEqual(specialized_fn(args_kwargs_test, 1, 2, 1)(),
+        self.assertEqual(specialized_fn(args_kwargs, 1, 2, 1)(),
                 1.0 / 2 * 1)
 
     def test_kwargs_handling(self):
-        self.assertEqual(specialized_fn(args_kwargs_test, c=4)(1, 2),
+        self.assertEqual(specialized_fn(args_kwargs, c=4)(1, 2),
                 1.0 / 2 * 4)
-        self.assertEqual(specialized_fn(args_kwargs_test, 2, c=4)(6),
+        self.assertEqual(specialized_fn(args_kwargs, 2, c=4)(6),
                 2.0 / 6 * 4)
 
     def test_if_on_stupid_power(self):
@@ -85,7 +85,7 @@ class TestSpecializer(unittest.TestCase):
 # Functions that are specialized
 
 
-def args_kwargs_test(a, b, c=None):
+def args_kwargs(a, b, c=None):
     return 1.0 * a / b * (c or 3)
 
 
