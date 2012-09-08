@@ -4,6 +4,7 @@ import ast
 import unittest
 
 import ast_pe.utils
+import ast_pe.astpretty
 
 
 class TestCase(unittest.TestCase):
@@ -23,6 +24,11 @@ class TestCase(unittest.TestCase):
         self.assertEqual(
                 compiled_fn(3, -9, 'z', zzz=map), 
                 sample_fn(3, -9, 'z', zzz=map))
+    
+    def test_ast_pp(self):
+        tree = ast_pe.utils.get_ast(sample_fn)
+        s = ast_pe.astpretty.ast_to_string(tree)
+        print s
 
 
 def sample_fn(x, y, foo='bar', **kw):
