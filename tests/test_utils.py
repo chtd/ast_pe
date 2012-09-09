@@ -44,6 +44,18 @@ class TestCase(unittest.TestCase):
                 compiled_fn(3, -9, 'z', zzz=map), 
                 sample_fn(3, -9, 'z', zzz=map))
     
+    def test_get_source(self):
+        tree = ast_pe.utils.get_ast(sample_fn)
+        source = ast_pe.utils.get_source(tree)
+        self.assertEqual(source, """
+def sample_fn(x, y, foo='bar', **kw):
+    if (foo == 'bar'):    
+        return (x + y)
+    else:    
+        return kw['zzz']
+    
+""")
+        
 
 def sample_fn(x, y, foo='bar', **kw):
     if foo == 'bar':

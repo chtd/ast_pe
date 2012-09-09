@@ -11,10 +11,10 @@ setup(
     author="Konstantin Lopuhin",
     author_email="kostia.lopuhin@gmail.com",
     packages=find_packages(),
-    install_requires=[],
+    install_requires=["meta"],
     tests_require=["nose"],
     platforms=["any"],
-    keywords="ast partial optimization",
+    keywords="AST partial optimization",
     classifiers=[
         "Development Status :: 1 - Planning",
         "Intended Audience :: Developers",
