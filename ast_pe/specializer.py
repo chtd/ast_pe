@@ -3,7 +3,9 @@
 import ast
 import numbers
 
-from ast_pe.utils import get_ast, eval_ast
+from meta import asttools
+
+from ast_pe.utils import get_ast, eval_ast, str_ast
 
 
 def specialized_fn(fn, *args, **kwargs):
@@ -43,24 +45,32 @@ class PartialEvaluator(ast.NodeTransformer):
     
     def visit_Name(self, node):
         self.generic_visit(node)
-        if node.id in self.bindings:
+        print 'visit_Name', self.bindings
+        print str_ast(node)
+        if isinstance(node.ctx, ast.Load) and node.id in self.bindings:
+            # FIXME - check that no assignments are made to node.id,
+            # otherwise it is invalid
             value = self.bindings[node.id]
             if isinstance(value, numbers.Number):
+                print 'substitute with number', value
                 return ast.Num(value, 
+                        lineno=node.lineno, col_offset=node.col_offset)
+            elif isinstance(value, basestring):
+                print 'substitute with string', value
+                return ast.Str(value,
                         lineno=node.lineno, col_offset=node.col_offset)
             else:
                 pass # TODO
         return node
 
-    """
     def visit_If(self, node):
         self.generic_visit(node)
-        if isinstance(node.test, ast.Compare):
+        print 'visit_If'
+        print str_ast(node)
+        test_symbols = asttools.get_symbols(node.test)
+        # TODO - check if we can evaluate it with meta.asttols.get_symbols
+        import pdb; pdb.set_trace()
+        #if isinstance(node.test, ast.Compare):
             # pass if isinstance
-        #import pdb; pdb.set_trace()
-        print
-        print 'visit_If', ast.dump(node)
-        print
         return node
-    """
 

@@ -4,7 +4,7 @@ import ast
 import unittest
 import functools
 
-from ast_pe.utils import get_ast
+from ast_pe.utils import get_ast, get_source
 from ast_pe.specializer import specialized_ast, specialized_fn
 
 
@@ -43,7 +43,14 @@ class TestSpecializer(unittest.TestCase):
         expected_ast.body[0].name = base_fn.__name__ # rename fn
         del expected_ast.body[0].body[0] # remove __doc__
         partial_ast, _ = specialized_ast(base_fn, **partial_kwargs)
-        self.assertEqual(ast.dump(partial_ast), ast.dump(expected_ast))
+        dump1, dump2 = ast.dump(partial_ast), ast.dump(expected_ast)
+        if dump1 != dump2:
+            print 'expected:'
+            print get_source(expected_ast)
+            print
+            print 'got:'
+            print get_source(partial_ast)
+        self.assertEqual(dump1, dump2)
 
     def _test_partial_fn(self, base_fn, partial_fn, kwargs_list):
         ''' Check that partial evaluation of base_fn with partial_args

@@ -30,3 +30,7 @@ def eq_ast(tree1, tree2):
 def get_source(tree):
     return meta.asttools.dump_python_source(tree)
 
+
+def str_ast(tree):
+    return meta.asttools.str_ast(tree)
+
