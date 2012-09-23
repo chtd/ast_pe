@@ -43,7 +43,7 @@ class TestOptimizer(BaseTestCase):
                 'm + n')
     
     def test_if_true_elimination(self):
-        true_values = [True, 1, 2.0, object()]
+        true_values = [True, 1, 2.0, object(), "foo"]
         self.assertTrue(all(true_values))
         for x in true_values:
             self._test_optization(

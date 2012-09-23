@@ -35,11 +35,22 @@ class Optimizer(ast.NodeTransformer):
         return node
 
     def visit_If(self, node):
+        # TODO - visit if part first, than deside which parts to visit
         self.generic_visit(node)
-        print 'visit_If'
-        print ast_to_string(node)
-        #import pdb; pdb.set_trace()
-        #if isinstance(node.test, ast.Compare):
-            # pass if isinstance
-        return node
+        test_value = None
+        if isinstance(node.test, ast.Name):
+            name = node.test
+            if isinstance(name.ctx, ast.Load) and name.id in self.bindings:
+                test_value = bool(self.bindings[name.id])
+        elif isinstance(node.test, ast.Num):
+            test_value = bool(node.test.n)
+        elif isinstance(node.test, ast.Str):
+            test_value = bool(node.test.s)
+        if test_value is not None:
+            if test_value:
+                return node.body
+            else:
+                return node.orelse
+        else:
+            return node
 
