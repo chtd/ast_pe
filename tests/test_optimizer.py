@@ -7,13 +7,19 @@ from ast_pe.optimizer import Optimizer
 
 
 class BaseOptimizerTestCase(BaseTestCase):
-    def _test_optization(self, source, bindings, expected_source):
+    def _test_optization(self, source, bindings, expected_source,
+            expected_new_bindings=None):
         ''' Test that with given bindings, Optimizer transforms
-        source to expected_source
+        source to expected_source.
+        It expected_new_bindings is given, we expect Optimizer to add
+        them to bindings.
         '''
         self.assertASTEqual(
                 Optimizer(bindings).visit(ast.parse(shift_source(source))),
                 ast.parse(shift_source(expected_source)))
+        if expected_new_bindings:
+            for k in expected_new_bindings:
+                self.assertEqual(bindings[k], expected_new_bindings[k])
 
 
 class TestConstantPropagation(BaseOptimizerTestCase):
@@ -56,7 +62,7 @@ class TestIf(BaseOptimizerTestCase):
     def test_if_true_elimination(self):
         ''' Eliminate if test, if the value is known at compile time
         '''
-        true_values = [True, 1, 2.0, object(), "foo"]
+        true_values = [True, 1, 2.0, object(), "foo", int]
         self.assertTrue(all(true_values))
         for x in true_values:
             self._test_optization(
@@ -119,3 +125,12 @@ class TestIf(BaseOptimizerTestCase):
                 'pass')
 
 
+class TestBuiltinsEvaluation(BaseOptimizerTestCase):
+    ''' Test that we can evaluate builtins
+    '''
+    def test_evaluate(self):
+        self._test_optization(
+                'isinstance(n, int)',
+                dict(n=10),
+                '__ast_pe_var_1',
+                dict(__ast_pe_var_1=True))
