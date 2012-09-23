@@ -1,14 +1,12 @@
 # -*- encoding: utf-8 -*-
 
-import ast
-import unittest
 import functools
 
-from ast_pe.utils import get_ast, get_source
+from ast_pe.utils import BaseTestCase, fn_to_ast
 from ast_pe.specializer import specialized_ast, specialized_fn
 
 
-class TestSpecializer(unittest.TestCase):
+class TestSpecializer(BaseTestCase):
     def test_args_handling(self):
         def args_kwargs(a, b, c=None):
             return 1.0 * a / b * (c or 3)
@@ -33,6 +31,14 @@ class TestSpecializer(unittest.TestCase):
             return 1 + m
         self._test_partial_ast(
                 const_arg_substitution, const_arg_substitution_1)
+    
+    def test_if(self):
+        def simple(x, y):
+            if x > 2.18 * (x**3):
+                return y
+            else:
+                return y + 1
+        # TODO
 
     def test_if_on_stupid_power(self):
         def stupid_power(n, x):
@@ -75,18 +81,11 @@ class TestSpecializer(unittest.TestCase):
         from partial_fn.__doc__ gives the same AST as partial_fn
         '''
         partial_kwargs = eval(partial_fn.__doc__)
-        expected_ast = get_ast(partial_fn)
+        partial_ast, _ = specialized_ast(fn_to_ast(base_fn), **partial_kwargs)
+        expected_ast = fn_to_ast(partial_fn)
         expected_ast.body[0].name = base_fn.__name__ # rename fn
         del expected_ast.body[0].body[0] # remove __doc__
-        partial_ast, _ = specialized_ast(base_fn, **partial_kwargs)
-        dump1, dump2 = ast.dump(partial_ast), ast.dump(expected_ast)
-        if dump1 != dump2:
-            print 'expected:'
-            print get_source(expected_ast)
-            print
-            print 'got:'
-            print get_source(partial_ast)
-        self.assertEqual(dump1, dump2)
+        self.assertASTEqual(partial_ast, expected_ast)
 
     def _test_partial_fn(self, base_fn, partial_fn, kwargs_list):
         ''' Check that partial evaluation of base_fn with partial_args

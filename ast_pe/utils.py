@@ -1,13 +1,15 @@
 # -*- encoding: utf-8 -*-
 
 import re
+import sys
 import ast
 import inspect
+import unittest
 
 import meta.asttools
 
 
-def get_ast(fn):
+def fn_to_ast(fn):
     ''' Return AST tree, parsed from fn
     '''
     source = inspect.getsource(fn)
@@ -28,20 +30,34 @@ def eval_ast(tree, globals_=None):
     return locals_[tree.body[0].name]
 
 
-def eq_ast(tree1, tree2):
+def ast_equal(tree1, tree2):
     ''' Returns whether AST tree1 is equal to tree2 
     '''
     return ast.dump(tree1) == ast.dump(tree2)
 
 
-def get_source(tree):
+def ast_to_source(tree):
     ''' Return python source of AST tree, as a string.
     '''
     return meta.asttools.dump_python_source(tree)
 
 
-def str_ast(tree):
+def ast_to_string(tree):
     ''' Return pretty-printed AST, as a string.
     '''
     return meta.asttools.str_ast(tree)
 
+
+class BaseTestCase(unittest.TestCase):
+    def assertASTEqual(self, test_ast, expected_ast):
+        ''' Check that test_ast is equal to expected_ast, 
+        printing helpful error message if they are not equal
+        '''
+        dump1, dump2 = ast.dump(test_ast), ast.dump(expected_ast)
+        if dump1 != dump2:
+            print >> sys.stderr, \
+                    '\nexpected:\n{expected_ast}\n'\
+                    '\ngot:\n{test_ast}\n'.format(
+                            expected_ast=ast_to_source(expected_ast),
+                            test_ast=ast_to_source(test_ast))
+        self.assertEqual(dump1, dump2)
