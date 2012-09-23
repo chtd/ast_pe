@@ -17,6 +17,30 @@ class TestOptimizer(BaseTestCase):
         self._test_optization(
                 'foo[:5]', dict(foo="bar"),
                 '"bar"[:5]')
+
+    def test_constant_propagation_fail(self):
+        ''' Test that constant propogation does not happen on primitive
+        subclasses
+        '''
+        class Int(int): pass
+        self._test_optization(
+                'm * n', dict(m=Int(2)),
+                'm * n')
+        self._test_optization(
+                'm * n', dict(m=Int(2), n=3),
+                'm * 3')
+        class Float(float): pass
+        self._test_optization(
+                'm * n', dict(m=Float(2.0)),
+                'm * n')
+        class String(str): pass
+        self._test_optization(
+                'm + n', dict(m=String('foo')),
+                'm + n')
+        class Unicode(unicode): pass
+        self._test_optization(
+                'm + n', dict(m=Unicode(u'foo')),
+                'm + n')
     
     def test_if_true_elimination(self):
         true_values = [True, 1, 2.0, object()]

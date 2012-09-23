@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 
 import ast
-import numbers
 
 from ast_pe.utils import ast_to_string
 
@@ -18,23 +17,21 @@ class Optimizer(ast.NodeTransformer):
     
     # TODO - handle variable mutation and assignment, 
     # to kick things from bindings
+    
+    number_types = (int, long, float)
+    string_types = (str, unicode)
 
     def visit_Name(self, node):
         self.generic_visit(node)
-        print 'visit_Name', self.bindings
-        print ast_to_string(node)
         if isinstance(node.ctx, ast.Load) and node.id in self.bindings:
             value = self.bindings[node.id]
-            if isinstance(value, numbers.Number):
-                print 'substitute with number', value
+            value_type = type(value)
+            if value_type in self.number_types:
                 return ast.Num(value, 
                         lineno=node.lineno, col_offset=node.col_offset)
-            elif isinstance(value, basestring):
-                print 'substitute with string', value
+            elif value_type in self.string_types:
                 return ast.Str(value,
                         lineno=node.lineno, col_offset=node.col_offset)
-            else:
-                pass # TODO
         return node
 
     def visit_If(self, node):
