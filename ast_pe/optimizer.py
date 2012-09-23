@@ -37,20 +37,18 @@ class Optimizer(ast.NodeTransformer):
     def visit_If(self, node):
         # TODO - visit if part first, than decide which parts to visit
         self.generic_visit(node)
-        test_value = None
-        if isinstance(node.test, ast.Name):
-            name = node.test
-            if isinstance(name.ctx, ast.Load) and name.id in self.bindings:
-                test_value = bool(self.bindings[name.id])
-        elif isinstance(node.test, ast.Num):
-            test_value = bool(node.test.n)
-        elif isinstance(node.test, ast.Str):
-            test_value = bool(node.test.s)
-        if test_value is not None:
+        def choose_branch(test_value):
             if test_value:
                 return node.body or ast.Pass()
             else:
                 return node.orelse or ast.Pass()
-        else:
-            return node
+        if isinstance(node.test, ast.Name):
+            name = node.test
+            if isinstance(name.ctx, ast.Load) and name.id in self.bindings:
+                return choose_branch(self.bindings[name.id])
+        elif isinstance(node.test, ast.Num):
+            return choose_branch(node.test.n)
+        elif isinstance(node.test, ast.Str):
+            return choose_branch(node.test.s)
+        return node
 
