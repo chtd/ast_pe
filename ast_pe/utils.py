@@ -12,12 +12,22 @@ import meta.asttools
 def fn_to_ast(fn):
     ''' Return AST tree, parsed from fn
     '''
-    source = inspect.getsource(fn)
+    source = shift_source(inspect.getsource(fn))
     # FIXME - more general solution, here just a quick hack for tests
+    return ast.parse(source)
+
+
+def shift_source(source):
+    ''' Shift source to the left - so that it starts with zero indentation
+    '''
+    source = source.rstrip()
+    if source.startswith('\n'):
+        source = source.lstrip('\n')
     if source.startswith(' '):
         n_spaces = len(re.match('^([ ]+)', source).group(0))
         source = '\n'.join(line[n_spaces:] for line in source.split('\n'))
-    return ast.parse(source)
+    return source
+
 
 
 def eval_ast(tree, globals_=None):
