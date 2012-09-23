@@ -89,12 +89,17 @@ class Optimizer(ast.NodeTransformer):
             # TODO - cases listed below
             assert not node.kwargs and not node.keywords and not node.starargs
             # TODO - handle exceptions 
-            fn_value = fn(*args)
-            var_name = self._add_new_binding(fn_value)
-            var_node = ast.Name(id=var_name, ctx=ast.Load(),
-                    lineno=node.lineno, col_offset=node.col_offset) 
-            # self.generic_visit(var_node) - TODO - apply other optimizations
-            return var_node
+            try:
+                fn_value = fn(*args)
+            except:
+                # do not optimize the call away to leave original exception
+                return node
+            else:
+                var_name = self._add_new_binding(fn_value)
+                var_node = ast.Name(id=var_name, ctx=ast.Load(),
+                        lineno=node.lineno, col_offset=node.col_offset) 
+                # self.generic_visit(var_node) - TODO - apply other optimizations
+                return var_node
         return node 
 
     def _is_pure_fn(self, fn):
@@ -104,7 +109,10 @@ class Optimizer(ast.NodeTransformer):
         if fn in self.PURE_FUNCTIONS:
             return True
         else:
-            # TODO - check for decorator, or analyze fn body
+            # TODO - implement decorator
+            if getattr(fn, '_ast_pe_is_pure', False):
+                return True
+            # TODO - or analyze fn body
             return False
 
     def _get_node_value_if_known(self, node):

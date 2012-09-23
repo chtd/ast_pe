@@ -4,6 +4,7 @@ import ast
 
 from ast_pe.utils import BaseTestCase, shift_source
 from ast_pe.optimizer import Optimizer
+from ast_pe.decorators import pure_function
 
 
 class BaseOptimizerTestCase(BaseTestCase):
@@ -123,6 +124,46 @@ class TestIf(BaseOptimizerTestCase):
                 ''', 
                 dict(x=object()),
                 'pass')
+        
+    def test_if_visit_only_true_branch(self):
+        pass # TODO
+
+
+class TestFnEvaluation(BaseOptimizerTestCase):
+    ''' Test function calling
+    '''
+    def test_call_no_args(self):
+        @pure_function
+        def fn():
+            return 'Hi!'
+        self._test_optization(
+                'x = fn()', 
+                dict(fn=fn), 
+                'x = __ast_pe_var_1',
+                dict(__ast_pe_var_1="Hi!"))
+
+    def test_call_with_args(self):
+        @pure_function
+        def fn(x, y):
+            return x + y
+        self._test_optization(
+                'z = fn(x, y)',
+                dict(fn=fn, x=10),
+                'z = fn(10, y)')
+        self._test_optization(
+                'z = fn(x, y)',
+                dict(fn=fn, x=10, y=20.0),
+                'z = __ast_pe_var_1',
+                dict(__ast_pe_var_1=30.0))
+
+    def test_exception(self):
+        ''' Test when called function raises an exception - 
+        we want it to raise it in specialized function 
+        '''
+        @pure_function
+        def fn():
+            return 1 / 0
+        self._test_optization('x = fn()', dict(fn=fn), 'x = fn()')
 
 
 class TestBuiltinsEvaluation(BaseOptimizerTestCase):
