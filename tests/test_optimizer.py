@@ -6,7 +6,17 @@ from ast_pe.utils import BaseTestCase, shift_source
 from ast_pe.optimizer import Optimizer
 
 
-class TestOptimizer(BaseTestCase):
+class BaseOptimizerTestCase(BaseTestCase):
+    def _test_optization(self, source, bindings, expected_source):
+        ''' Test that with given bindings, Optimizer transforms
+        source to expected_source
+        '''
+        self.assertASTEqual(
+                Optimizer(bindings).visit(ast.parse(shift_source(source))),
+                ast.parse(shift_source(expected_source)))
+
+
+class TestConstantPropagation(BaseOptimizerTestCase):
     def test_constant_propagation(self):
         self._test_optization(
                 'a * n + (m - 2) * (n + 1)', dict(n=5),
@@ -41,7 +51,8 @@ class TestOptimizer(BaseTestCase):
         self._test_optization(
                 'm + n', dict(m=Unicode(u'foo')),
                 'm + n')
-    
+
+class TestIf(BaseOptimizerTestCase):
     def test_if_true_elimination(self):
         ''' Eliminate if test, if the value is known at compile time
         '''
@@ -106,13 +117,5 @@ class TestOptimizer(BaseTestCase):
                 ''', 
                 dict(x=object()),
                 'pass')
-
-    def _test_optization(self, source, bindings, expected_source):
-        ''' Test that with given bindings, Optimizer transforms
-        source to expected_source
-        '''
-        self.assertASTEqual(
-                Optimizer(bindings).visit(ast.parse(shift_source(source))),
-                ast.parse(shift_source(expected_source)))
 
 

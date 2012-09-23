@@ -35,7 +35,7 @@ class Optimizer(ast.NodeTransformer):
         return node
 
     def visit_If(self, node):
-        # TODO - visit if part first, than deside which parts to visit
+        # TODO - visit if part first, than decide which parts to visit
         self.generic_visit(node)
         test_value = None
         if isinstance(node.test, ast.Name):
