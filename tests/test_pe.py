@@ -10,22 +10,58 @@ from ast_pe.specializer import specialized_ast, specialized_fn
 
 class TestSpecializer(unittest.TestCase):
     def test_args_handling(self):
+        def args_kwargs(a, b, c=None):
+            return 1.0 * a / b * (c or 3)
         self.assertEqual(specialized_fn(args_kwargs, 1)(2),
                 1.0 / 2 * 3)
         self.assertEqual(specialized_fn(args_kwargs, 1, 2, 1)(),
                 1.0 / 2 * 1)
 
     def test_kwargs_handling(self):
+        def args_kwargs(a, b, c=None):
+            return 1.0 * a / b * (c or 3)
         self.assertEqual(specialized_fn(args_kwargs, c=4)(1, 2),
                 1.0 / 2 * 4)
         self.assertEqual(specialized_fn(args_kwargs, 2, c=4)(6),
                 2.0 / 6 * 4)
     
     def test_const_arg_substitution(self):
+        def const_arg_substitution(n, m):
+            return n + m
+        def const_arg_substitution_1(m):
+            '{"n": 1}'
+            return 1 + m
         self._test_partial_ast(
                 const_arg_substitution, const_arg_substitution_1)
 
     def test_if_on_stupid_power(self):
+        def stupid_power(n, x):
+            if not isinstance(n, int) or n < 0:
+                raise ValueError('Base should be a positive integer')
+            else:
+                if n == 0:
+                    return 1
+                if n == 1:
+                    return x
+                v = 1
+                for _ in xrange(n):
+                    v *= x
+                return v
+        def stupid_power_foo(x):
+            '{"n": "foo"}'
+            raise ValueError('Base should be a positive integer')
+        def stupid_power_0(x):
+            '{"n": 0}'
+            return 1
+        def stupid_power_1(x):
+            '{"n": 1}'
+            return x
+        def stupid_power_2(x):
+            '{"n": 2}'
+            v = 1
+            for _ in xrange(2):
+                v *= x
+            return v
         kwargs_list = [{'x': v} for v in [0, 1, 0.01, 5e10]]
         for fn in (stupid_power_foo, 
                 stupid_power_0, stupid_power_1, stupid_power_2):
@@ -94,64 +130,6 @@ class TestSpecializer(unittest.TestCase):
             self.assertIsNone(e1)
             self.assertIsNone(e2)
             self.assertEqual(v1, v2)
-
-
-# Functions that are specialized
-
-
-def args_kwargs(a, b, c=None):
-    return 1.0 * a / b * (c or 3)
-
-#=======================================================
-
-def const_arg_substitution(n, m):
-    return n + m
-
-def const_arg_substitution_1(m):
-    '{"n": 1}'
-    return 1 + m
-
-#=======================================================
-
-
-def stupid_power(n, x):
-    if not isinstance(n, int) or n < 0:
-        raise ValueError('Base should be a positive integer')
-    else:
-        if n == 0:
-            return 1
-        if n == 1:
-            return x
-        v = 1
-        for _ in xrange(n):
-            v *= x
-        return v
-
-
-def stupid_power_foo(x):
-    '{"n": "foo"}'
-    raise ValueError('Base should be a positive integer')
-
-
-def stupid_power_0(x):
-    '{"n": 0}'
-    return 1
-
-
-def stupid_power_1(x):
-    '{"n": 1}'
-    return x
-
-
-def stupid_power_2(x):
-    '{"n": 2}'
-    v = 1
-    for _ in xrange(2):
-        v *= x
-    return v
-
-
-#=======================================================
 
 
 def smart_power(n, x):
