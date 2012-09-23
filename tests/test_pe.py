@@ -155,7 +155,11 @@ def stupid_power_2(x):
 
 
 def smart_power(n, x):
-    if n % 2 == 0:
+    if not isinstance(n, int) or n < 0:
+        raise ValueError('Base should be a positive integer')
+    elif n == 0:
+        return 1
+    elif n % 2 == 0:
         v = smart_power(n / 2, x)
         return v * v
     else:

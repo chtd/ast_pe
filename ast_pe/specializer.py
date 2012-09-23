@@ -18,7 +18,9 @@ def specialized_fn(fn, *args, **kwargs):
 
 
 def specialized_ast(fn, *args, **kwargs):
-    ''' Return AST of specialized function, and dict with closure bindings
+    ''' Return AST of specialized function, and dict with closure bindings.
+    args and kwargs have the same meaning as in functools.partial.
+    Here we just handle the args and kwargs of function defenition.
     '''
     bindings = {}
     tree = get_ast(fn)
@@ -33,23 +35,27 @@ def specialized_ast(fn, *args, **kwargs):
         for kwarg_name, kwarg_value in kwargs.iteritems():
             bindings[kwarg_name] = kwarg_value
             fn_args.args.remove(arg_by_id[kwarg_name])
-    return PartialEvaluator(bindings, *args, **kwargs).visit(tree), bindings
+    return PartialEvaluator(bindings).visit(tree), bindings
 
 
 class PartialEvaluator(ast.NodeTransformer):
-    def __init__(self, bindings, *args, **kwargs):
+    def __init__(self, bindings):
+        ''' 
+        bindings is a dict names-> values of variables known at compile time,
+        that is populated with newly bound variables (results of calculations
+        done at compile time)
+        '''
         self.bindings = bindings
-        self.args = args
-        self.kwargs = kwargs
         super(PartialEvaluator, self).__init__()
     
+    # TODO - handle variable mutation and assignment, 
+    # to kick things from bindings
+
     def visit_Name(self, node):
         self.generic_visit(node)
         print 'visit_Name', self.bindings
         print str_ast(node)
         if isinstance(node.ctx, ast.Load) and node.id in self.bindings:
-            # FIXME - check that no assignments are made to node.id,
-            # otherwise it is invalid
             value = self.bindings[node.id]
             if isinstance(value, numbers.Number):
                 print 'substitute with number', value
@@ -69,7 +75,7 @@ class PartialEvaluator(ast.NodeTransformer):
         print str_ast(node)
         test_symbols = asttools.get_symbols(node.test)
         # TODO - check if we can evaluate it with meta.asttols.get_symbols
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         #if isinstance(node.test, ast.Compare):
             # pass if isinstance
         return node
