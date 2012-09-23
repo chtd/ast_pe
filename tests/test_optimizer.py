@@ -43,20 +43,69 @@ class TestOptimizer(BaseTestCase):
                 'm + n')
     
     def test_if_true_elimination(self):
+        ''' Eliminate if test, if the value is known at compile time
+        '''
         true_values = [True, 1, 2.0, object(), "foo"]
         self.assertTrue(all(true_values))
         for x in true_values:
             self._test_optization(
                     'if x: print "x is True"', dict(x=x),
                     'print "x is True"')
-        self._test_optization("""
+        self._test_optization('''
             if x:
                 do_stuff()
             else:
                 do_other_stuff()
-            """,
+            ''',
             dict(x=2),
             'do_stuff()')
+    
+    def test_if_no_elimination(self):
+        ''' Test that there is no unneeded elimination of if test
+        '''
+        self._test_optization('''
+            if x:
+                do_stuff()
+            else:
+                do_other_stuff()
+            ''',
+            dict(y=2),
+            '''
+            if x:
+                do_stuff()
+            else:
+                do_other_stuff()
+            ''')
+
+    def test_if_false_elimination(self):
+        ''' Eliminate if test, when test is false
+        '''
+        class Falsy(object): 
+            def __nonzero__(self):
+                return False
+        false_values = [0, '', [], {}, set(), False, None, Falsy()]
+        for x in false_values:
+            self._test_optization('''
+                if x:
+                    do_stuff()
+                else:
+                    do_other_stuff()
+                ''',
+                dict(x=x),
+                'do_other_stuff()')
+
+    def test_if_empty_elimination(self):
+        ''' Eliminate if completly, when corresponding clause is empty
+        '''
+        self._test_optization('if x: do_stuff()', dict(x=False), 'pass')
+        self._test_optization('''
+                if x:
+                    pass
+                else:
+                    do_stuff()
+                ''', 
+                dict(x=object()),
+                'pass')
 
     def _test_optization(self, source, bindings, expected_source):
         ''' Test that with given bindings, Optimizer transforms

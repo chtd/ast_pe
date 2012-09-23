@@ -48,9 +48,9 @@ class Optimizer(ast.NodeTransformer):
             test_value = bool(node.test.s)
         if test_value is not None:
             if test_value:
-                return node.body
+                return node.body or ast.Pass()
             else:
-                return node.orelse
+                return node.orelse or ast.Pass()
         else:
             return node
 
