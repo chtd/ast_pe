@@ -14,6 +14,7 @@ class Optimizer(ast.NodeTransformer):
         done at compile time)
         '''
         self.bindings = bindings
+        self._var_count = 0
         super(Optimizer, self).__init__()
     
     NUMBER_TYPES = (int, long, float)
@@ -56,42 +57,47 @@ class Optimizer(ast.NodeTransformer):
     def visit_If(self, node):
         # TODO - visit if part first, than decide which parts to visit
         self.generic_visit(node)
-        def choose_branch(test_value):
+        is_known, test_value = self._get_node_value_if_known(node.test)
+        if is_known:
             if test_value:
                 return node.body or ast.Pass()
             else:
                 return node.orelse or ast.Pass()
-        if isinstance(node.test, ast.Name):
-            name = node.test
-            if isinstance(name.ctx, ast.Load) and name.id in self.bindings:
-                return choose_branch(self.bindings[name.id])
-        elif isinstance(node.test, ast.Num):
-            return choose_branch(node.test.n)
-        elif isinstance(node.test, ast.Str):
-            return choose_branch(node.test.s)
         return node
 
     def visit_Call(self, node):
         self.generic_visit(node)
-        print ast_to_string(node)
-        is_known, fn = self.get_node_value_if_known(node.func)
+        is_known, fn = self._get_node_value_if_known(node.func)
         if is_known:
-            return self.call_fn_if_safe(fn, node)
+            return self._fn_result_node_if_safe(fn, node)
         return node
 
-    def call_fn_if_safe(self, fn, node):
+    def _fn_result_node_if_safe(self, fn, node):
         ''' Check that we know all fn args, and that fn is pure.
         Than call it and return a node representing the value.
         It we can not call fn, just return node.
         '''
-        if self.fn_is_pure(fn):
+        assert isinstance(node, ast.Call)
+        if self._is_pure_fn(fn):
             args = []
-            #for arg_node in 
-            pass
-        # TODO
+            for arg_node in node.args:
+                is_known, value = self._get_node_value_if_known(arg_node)
+                if is_known:
+                    args.append(value)
+                else:
+                    return node
+            # TODO - cases listed below
+            assert not node.kwargs and not node.keywords and not node.starargs
+            # TODO - handle exceptions 
+            fn_value = fn(*args)
+            var_name = self._add_new_binding(fn_value)
+            var_node = ast.Name(id=var_name, ctx=ast.Load(),
+                    lineno=node.lineno, col_offset=node.col_offset) 
+            # self.generic_visit(var_node) - TODO - apply other optimizations
+            return var_node
         return node 
 
-    def fn_is_pure(self, fn):
+    def _is_pure_fn(self, fn):
         ''' fn has no side effects, and its value is determined only by
         its inputs
         '''
@@ -101,16 +107,29 @@ class Optimizer(ast.NodeTransformer):
             # TODO - check for decorator, or analyze fn body
             return False
 
-    def get_node_value_if_known(self, node):
+    def _get_node_value_if_known(self, node):
         ''' Return tuple of boolean(value is know), and value itself
         '''
+        known = lambda x: (True, x)
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
             name = node.id
             if name in self.bindings:
-                return True, self.bindings[name]
+                return known(self.bindings[name])
             else:
                 # TODO - how to check builtin redefinitions?
                 if hasattr(__builtin__, name):
-                    return True, getattr(__builtin__, name)
+                    return known(getattr(__builtin__, name))
+        elif isinstance(node, ast.Num):
+            return known(node.n)
+        elif isinstance(node, ast.Str):
+            return known(node.s)
         return False, None
-
+    
+    def _add_new_binding(self, value):
+        ''' Generate unique variable name, add it to bindings with given value,
+        and return the name.
+        '''
+        self._var_count += 1
+        var_name = '__ast_pe_var_%d' % self._var_count
+        self.bindings[var_name] = value
+        return var_name
