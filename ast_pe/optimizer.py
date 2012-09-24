@@ -71,6 +71,13 @@ class Optimizer(ast.NodeTransformer):
         if is_known:
             return self._fn_result_node_if_safe(fn, node)
         return node
+    
+    def visit_UnaryOp(self, node):
+        self.generic_visit(node)
+        is_known, value = self._get_node_value_if_known(node.operand)
+        if is_known and isinstance(node.op, ast.Not):
+            return self._new_binding_node(not value, node)
+        return node
 
     def _fn_result_node_if_safe(self, fn, node):
         ''' Check that we know all fn args, and that fn is pure.
@@ -95,11 +102,7 @@ class Optimizer(ast.NodeTransformer):
                 # do not optimize the call away to leave original exception
                 return node
             else:
-                var_name = self._add_new_binding(fn_value)
-                var_node = ast.Name(id=var_name, ctx=ast.Load(),
-                        lineno=node.lineno, col_offset=node.col_offset) 
-                # self.generic_visit(var_node) - TODO - apply other optimizations
-                return var_node
+                return self._new_binding_node(fn_value, node)
         return node 
 
     def _is_pure_fn(self, fn):
@@ -133,11 +136,14 @@ class Optimizer(ast.NodeTransformer):
             return known(node.s)
         return False, None
     
-    def _add_new_binding(self, value):
+    def _new_binding_node(self, value, replaced_node):
         ''' Generate unique variable name, add it to bindings with given value,
-        and return the name.
+        and return the node that loads generated variable.
         '''
         self._var_count += 1
         var_name = '__ast_pe_var_%d' % self._var_count
         self.bindings[var_name] = value
-        return var_name
+        # self.generic_visit(var_node) - TODO - apply other optimizations
+        return ast.Name(id=var_name, ctx=ast.Load(),
+                lineno=replaced_node.lineno, 
+                col_offset=replaced_node.col_offset) 

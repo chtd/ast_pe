@@ -156,6 +156,12 @@ class TestFnEvaluation(BaseOptimizerTestCase):
                 'z = __ast_pe_var_1',
                 dict(__ast_pe_var_1=30.0))
 
+    def test_call_with_starargs(self):
+        pass # TODO
+    
+    def test_call_with_kwargs(self):
+        pass #TODO
+
     def test_exception(self):
         ''' Test when called function raises an exception - 
         we want it to raise it in specialized function 
@@ -175,3 +181,13 @@ class TestBuiltinsEvaluation(BaseOptimizerTestCase):
                 dict(n=10),
                 '__ast_pe_var_1',
                 dict(__ast_pe_var_1=True))
+
+
+class TestUnaryOp(BaseOptimizerTestCase):
+    def test_not(self):
+        self._test_optization(
+                'not x', dict(x="s"), 
+                '__ast_pe_var_1', dict(__ast_pe_var_1=False))
+        self._test_optization(
+                'not x', dict(x=0), 
+                '__ast_pe_var_1', dict(__ast_pe_var_1=True))
