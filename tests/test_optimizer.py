@@ -8,7 +8,7 @@ from ast_pe.decorators import pure_function
 
 
 class BaseOptimizerTestCase(BaseTestCase):
-    def _test_optization(self, source, bindings, expected_source,
+    def _test_optimization(self, source, bindings, expected_source,
             expected_new_bindings=None):
         ''' Test that with given bindings, Optimizer transforms
         source to expected_source.
@@ -25,13 +25,13 @@ class BaseOptimizerTestCase(BaseTestCase):
 
 class TestConstantPropagation(BaseOptimizerTestCase):
     def test_constant_propagation(self):
-        self._test_optization(
+        self._test_optimization(
                 'a * n + (m - 2) * (n + 1)', dict(n=5),
                 'a * 5 + (m - 2) * (5 + 1)')
-        self._test_optization(
+        self._test_optimization(
                 'a * n + (m - 2) * (n + 1)', dict(n=5.0),
                 'a * 5.0 + (m - 2) * (5.0 + 1)')
-        self._test_optization(
+        self._test_optimization(
                 'foo[:5]', dict(foo="bar"),
                 '"bar"[:5]')
 
@@ -40,22 +40,22 @@ class TestConstantPropagation(BaseOptimizerTestCase):
         subclasses
         '''
         class Int(int): pass
-        self._test_optization(
+        self._test_optimization(
                 'm * n', dict(m=Int(2)),
                 'm * n')
-        self._test_optization(
+        self._test_optimization(
                 'm * n', dict(m=Int(2), n=3),
                 'm * 3')
         class Float(float): pass
-        self._test_optization(
+        self._test_optimization(
                 'm * n', dict(m=Float(2.0)),
                 'm * n')
         class String(str): pass
-        self._test_optization(
+        self._test_optimization(
                 'm + n', dict(m=String('foo')),
                 'm + n')
         class Unicode(unicode): pass
-        self._test_optization(
+        self._test_optimization(
                 'm + n', dict(m=Unicode(u'foo')),
                 'm + n')
 
@@ -66,10 +66,10 @@ class TestIf(BaseOptimizerTestCase):
         true_values = [True, 1, 2.0, object(), "foo", int]
         self.assertTrue(all(true_values))
         for x in true_values:
-            self._test_optization(
+            self._test_optimization(
                     'if x: print "x is True"', dict(x=x),
                     'print "x is True"')
-        self._test_optization('''
+        self._test_optimization('''
             if x:
                 do_stuff()
             else:
@@ -81,7 +81,7 @@ class TestIf(BaseOptimizerTestCase):
     def test_if_no_elimination(self):
         ''' Test that there is no unneeded elimination of if test
         '''
-        self._test_optization('''
+        self._test_optimization('''
             if x:
                 do_stuff()
             else:
@@ -103,7 +103,7 @@ class TestIf(BaseOptimizerTestCase):
                 return False
         false_values = [0, '', [], {}, set(), False, None, Falsy()]
         for x in false_values:
-            self._test_optization('''
+            self._test_optimization('''
                 if x:
                     do_stuff()
                 else:
@@ -115,8 +115,8 @@ class TestIf(BaseOptimizerTestCase):
     def test_if_empty_elimination(self):
         ''' Eliminate if completly, when corresponding clause is empty
         '''
-        self._test_optization('if x: do_stuff()', dict(x=False), 'pass')
-        self._test_optization('''
+        self._test_optimization('if x: do_stuff()', dict(x=False), 'pass')
+        self._test_optimization('''
                 if x:
                     pass
                 else:
@@ -136,7 +136,7 @@ class TestFnEvaluation(BaseOptimizerTestCase):
         @pure_function
         def fn():
             return 'Hi!'
-        self._test_optization(
+        self._test_optimization(
                 'x = fn()', 
                 dict(fn=fn), 
                 'x = __ast_pe_var_1',
@@ -146,11 +146,11 @@ class TestFnEvaluation(BaseOptimizerTestCase):
         @pure_function
         def fn(x, y):
             return x + y
-        self._test_optization(
+        self._test_optimization(
                 'z = fn(x, y)',
                 dict(fn=fn, x=10),
                 'z = fn(10, y)')
-        self._test_optization(
+        self._test_optimization(
                 'z = fn(x, y)',
                 dict(fn=fn, x=10, y=20.0),
                 'z = __ast_pe_var_1',
@@ -169,14 +169,14 @@ class TestFnEvaluation(BaseOptimizerTestCase):
         @pure_function
         def fn():
             return 1 / 0
-        self._test_optization('x = fn()', dict(fn=fn), 'x = fn()')
+        self._test_optimization('x = fn()', dict(fn=fn), 'x = fn()')
 
 
 class TestBuiltinsEvaluation(BaseOptimizerTestCase):
     ''' Test that we can evaluate builtins
     '''
     def test_evaluate(self):
-        self._test_optization(
+        self._test_optimization(
                 'isinstance(n, int)',
                 dict(n=10),
                 '__ast_pe_var_1',
@@ -185,9 +185,15 @@ class TestBuiltinsEvaluation(BaseOptimizerTestCase):
 
 class TestUnaryOp(BaseOptimizerTestCase):
     def test_not(self):
-        self._test_optization(
+        self._test_optimization(
                 'not x', dict(x="s"), 
                 '__ast_pe_var_1', dict(__ast_pe_var_1=False))
-        self._test_optization(
+        self._test_optimization(
                 'not x', dict(x=0), 
                 '__ast_pe_var_1', dict(__ast_pe_var_1=True))
+
+
+class TestBinaryOp(BaseOptimizerTestCase):
+    def test_and(self):
+        pass #self._test_optimization(
+
