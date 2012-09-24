@@ -191,9 +191,42 @@ class TestUnaryOp(BaseOptimizerTestCase):
         self._test_optimization(
                 'not x', dict(x=0), 
                 '__ast_pe_var_1', dict(__ast_pe_var_1=True))
+        self._test_optimization(
+                'not 1', dict(), 
+                '__ast_pe_var_1', dict(__ast_pe_var_1=False))
 
 
 class TestBinaryOp(BaseOptimizerTestCase):
     def test_and(self):
-        pass #self._test_optimization(
+        self._test_optimization(
+                'a and b', dict(a=False),
+                '__ast_pe_var_1', dict(__ast_pe_var_1=False))
+        self._test_optimization(
+                'a and b', dict(a=True),
+                'b')
+        self._test_optimization(
+                'a and b', dict(a=True, b=True),
+                '__ast_pe_var_1', dict(__ast_pe_var_1=True))
+        self._test_optimization(
+                'a and b and c and d', dict(a=True, c=True),
+                'b and d', dict(__ast_pe_var_1=True))
+
+    def test_and_short_circut(self):
+        global_state = dict(cnt=0)
+
+        @pure_function
+        def inc():
+            global_state['cnt'] += 1
+            return True
+
+        self._test_optimization(
+                'a and inc()', dict(a=False, inc=inc),
+                '__ast_pe_var_1', dict(__ast_pe_var_1=False))
+        self.assertEqual(global_state['cnt'], 0)
+
+        self._test_optimization(
+                'a and inc()', dict(a=True, inc=inc),
+                '__ast_pe_var_1', dict(__ast_pe_var_1=True))
+        self.assertEqual(global_state['cnt'], 1)
+
 
