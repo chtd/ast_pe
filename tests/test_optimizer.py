@@ -2,24 +2,28 @@
 
 import ast
 
-from ast_pe.utils import BaseTestCase, shift_source
+from ast_pe.utils import BaseTestCase, shift_source, ast_to_string
 from ast_pe.optimizer import Optimizer
 from ast_pe.decorators import pure_function
 
 
 class BaseOptimizerTestCase(BaseTestCase):
     def _test_optimization(self, source, bindings, expected_source,
-            expected_new_bindings=None):
+            expected_new_bindings=None, print_source=False):
         ''' Test that with given bindings, Optimizer transforms
         source to expected_source.
         It expected_new_bindings is given, we expect Optimizer to add
         them to bindings.
         '''
+        if print_source:
+            print ast_to_string(ast.parse(shift_source(source)))
         self.assertASTEqual(
                 Optimizer(bindings).visit(ast.parse(shift_source(source))),
                 ast.parse(shift_source(expected_source)))
         if expected_new_bindings:
             for k in expected_new_bindings:
+                if k not in bindings:
+                    print 'bindings:', bindings
                 self.assertEqual(bindings[k], expected_new_bindings[k])
 
 
@@ -126,7 +130,7 @@ class TestIf(BaseOptimizerTestCase):
                 'pass')
         
     def test_if_visit_only_true_branch(self):
-        pass # TODO
+        pass # TODO - same idea as in test_and_short_circut
 
 
 class TestFnEvaluation(BaseOptimizerTestCase):
@@ -196,7 +200,7 @@ class TestUnaryOp(BaseOptimizerTestCase):
                 '__ast_pe_var_1', dict(__ast_pe_var_1=False))
 
 
-class TestBinaryOp(BaseOptimizerTestCase):
+class TestBoolOp(BaseOptimizerTestCase):
     def test_and(self):
         self._test_optimization(
                 'a and b', dict(a=False),
@@ -205,11 +209,11 @@ class TestBinaryOp(BaseOptimizerTestCase):
                 'a and b', dict(a=True),
                 'b')
         self._test_optimization(
-                'a and b', dict(a=True, b=True),
-                '__ast_pe_var_1', dict(__ast_pe_var_1=True))
+                'a and b()', dict(a=True, b=pure_function(lambda: True)),
+                '__ast_pe_var_2', dict(__ast_pe_var_2=True))
         self._test_optimization(
                 'a and b and c and d', dict(a=True, c=True),
-                'b and d', dict(__ast_pe_var_1=True))
+                'b and d')
 
     def test_and_short_circut(self):
         global_state = dict(cnt=0)

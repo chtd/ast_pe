@@ -79,6 +79,24 @@ class Optimizer(ast.NodeTransformer):
             return self._new_binding_node(not value, node)
         return node
 
+    def visit_BoolOp(self, node):
+        self.generic_visit(node) # FIXME - implement short-circuting
+        print ast_to_string(node)
+        if isinstance(node.op, ast.And):
+            for value_node in list(node.values):
+                is_known, value = self._get_node_value_if_known(value_node)
+                if is_known:
+                    if value:
+                        node.values.remove(value_node)
+                    else:
+                        return self._new_binding_node(False, node)
+        if not node.values:
+            return self._new_binding_node(True, node)
+        elif len(node.values) == 1:
+            return node.values[0]
+        else:
+            return node
+
     def _fn_result_node_if_safe(self, fn, node):
         ''' Check that we know all fn args, and that fn is pure.
         Than call it and return a node representing the value.
