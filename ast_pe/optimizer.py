@@ -13,6 +13,7 @@ class Optimizer(ast.NodeTransformer):
     
     NUMBER_TYPES = (int, long, float)
     STRING_TYPES = (str, unicode)
+    # FIXME - only functions with immutable results?
     PURE_FUNCTIONS = (
             abs, divmod,  staticmethod,
             all, enumerate, int, ord, str,
@@ -23,7 +24,7 @@ class Optimizer(ast.NodeTransformer):
             bytearray, float, list, unichr,
             callable, format,  reduce, unicode,
             chr, frozenset, long,
-            classmethod, getattr, map, repr, xrange,
+            classmethod, getattr, map, repr,
             cmp,  max, reversed, zip,
             hasattr,  round,
             complex, hash, min, set, apply,
@@ -55,6 +56,11 @@ class Optimizer(ast.NodeTransformer):
         logger.debug('%s got %s', prefix, ast_to_string(node))
         return node
     
+    def visit_FunctionDef(self, node):
+        self.generic_visit(node)
+        node.body = self._eliminate_dead_code(node.body)
+        return node
+
     def visit_Name(self, node):
         self.generic_visit(node)
         if isinstance(node.ctx, ast.Load) and node.id in self.bindings:
@@ -69,17 +75,14 @@ class Optimizer(ast.NodeTransformer):
         is_known, test_value = self._get_node_value_if_known(node.test)
         if is_known:
             pass_ = ast.Pass(lineno=node.lineno, col_offset=node.col_offset)
-            if test_value:
-                if node.body:
-                    return self._visit(node.body) or pass_
-                else:
-                    return pass_
+            taken_node = node.body if test_value else node.orelse
+            if taken_node:
+                return self._visit(taken_node) or pass_
             else:
-                if node.orelse:
-                    return self._visit(node.orelse) or pass_
-                else:
-                    return pass_
-        self.generic_visit(node)
+                return pass_
+        else:
+            node.body = self._visit(node.body)
+            node.orelse = self._visit(node.orelse)
         return node
 
     def visit_Call(self, node):
@@ -150,9 +153,27 @@ class Optimizer(ast.NodeTransformer):
 
     def _visit(self, node):
         if isinstance(node, list):
-            return map(self.visit, node)
+            result = []
+            for n in node:
+                r = self.visit(n)
+                if isinstance(r, list):
+                    result.extend(r)
+                else:
+                    result.append(r)
+            return self._eliminate_dead_code(result)
         else:
             return self.visit(node)
+
+    def _eliminate_dead_code(self, node_list):
+        ''' Dead code elimination - remove "pass", code after return
+        '''
+        print '_eliminate_dead_code', node_list
+        for i, node in enumerate(list(node_list)):
+            if isinstance(node, ast.Pass) and len(node_list) > 1:
+                node_list.remove(node)
+            if isinstance(node, ast.Return):
+                return node_list[:i+1]
+        return node_list
 
     def _fn_result_node_if_safe(self, fn, node):
         ''' Check that we know all fn args, and that fn is pure.

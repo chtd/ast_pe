@@ -118,12 +118,15 @@ class TestIf(BaseOptimizerTestCase):
                     do_stuff()
                 else:
                     do_other_stuff()
-                    do_someother_stuff()
+                    if True:
+                        do_someother_stuff()
+                        and_more_stuff()
                 ''',
                 dict(x=x),
                 '''
                 do_other_stuff()
                 do_someother_stuff()
+                and_more_stuff()
                 ''')
 
     def test_if_empty_elimination(self):
@@ -157,6 +160,23 @@ class TestIf(BaseOptimizerTestCase):
                     inc()
                 ''', dict(a=False, inc=inc), 'True')
         self.assertEqual(global_state['cnt'], 1)
+    
+    def test_visit_all_branches(self):
+        self._test_opt('''
+                if x > 0:
+                    if True:
+                        x += 1
+                else:
+                    if False:
+                        return 0
+                ''',
+                dict(),
+                '''
+                if x > 0:
+                    x += 1
+                else:
+                    pass
+                ''')
 
 
 class TestFnEvaluation(BaseOptimizerTestCase):
@@ -268,24 +288,6 @@ class TestBoolOp(BaseOptimizerTestCase):
                 ''',
                 dict(n=0),
                 'bar()')
-        self._test_opt(
-                '''
-                if not isinstance(n, int) or n < 0:
-                    foo()
-                else:
-                    bar()
-                ''',
-                dict(n=-1),
-                'foo()')
-        self._test_opt(
-                '''
-                if not isinstance(n, int) or n < 0:
-                    foo()
-                else:
-                    bar()
-                ''',
-                dict(n=1.0),
-                'foo()')
 
 
 class Testcompare(BaseOptimizerTestCase):
@@ -304,3 +306,74 @@ class Testcompare(BaseOptimizerTestCase):
         self._test_opt('a < b >= c', dict(a=0, b=1, c=1), 'True')
         self._test_opt('a <= b > c', dict(a=0, b=1, c=1), 'False')
 
+
+class TestRemoveDeadCode(BaseOptimizerTestCase):
+    def test_remove_pass(self):
+        self._test_opt(
+                '''
+                def fn(x):
+                    x += 1
+                    pass
+                    return x
+                ''',
+                dict(),
+                '''
+                def fn(x):
+                    x += 1
+                    return x
+                ''')
+
+    def test_remove_pass_if(self):
+        self._test_opt(
+                '''
+                if x > 0:
+                    x += 1
+                    pass
+                ''',
+                dict(),
+                '''
+                if x > 0:
+                    x += 1
+                ''')
+
+    def test_not_remove_pass(self):
+        self._test_opt(
+                '''
+                if x > 0:
+                    pass
+                ''',
+                dict(),
+                '''
+                if x > 0:
+                    pass
+                ''')
+
+    def test_remove_after_return(self):
+        self._test_opt(
+                '''
+                def fn(x):
+                    x += 1
+                    return x
+                    x += 1
+                ''',
+                dict(),
+                '''
+                def fn(x):
+                    x += 1
+                    return x
+                ''')
+
+    def test_remove_after_return_if(self):
+        self._test_opt(
+                '''
+                if x > 0:
+                    x += 1
+                    return x
+                    x += 1
+                ''',
+                dict(),
+                '''
+                if x > 0:
+                    x += 1
+                    return x
+                ''')
