@@ -1,21 +1,17 @@
 # -*- encoding: utf-8 -*-
 
 import __builtin__
+import logging
 
 import ast
 from ast_pe.utils import ast_to_string
 
 
+logger = logging.getLogger(name=__name__)
+logger.setLevel(logging.INFO)
+
+
 class Optimizer(ast.NodeTransformer):
-    def __init__(self, bindings):
-        ''' 
-        bindings is a dict names-> values of variables known at compile time,
-        that is populated with newly bound variables (results of calculations
-        done at compile time)
-        '''
-        self.bindings = bindings
-        self._var_count = 0
-        super(Optimizer, self).__init__()
     
     NUMBER_TYPES = (int, long, float)
     STRING_TYPES = (str, unicode)
@@ -40,6 +36,26 @@ class Optimizer(ast.NodeTransformer):
 
     # TODO - handle variable mutation and assignment, 
     # to kick things from bindings
+
+    def __init__(self, bindings):
+        ''' 
+        bindings is a dict names-> values of variables known at compile time,
+        that is populated with newly bound variables (results of calculations
+        done at compile time)
+        '''
+        self.bindings = bindings
+        self._var_count = 0
+        self._depth = 0
+        super(Optimizer, self).__init__()
+   
+    def generic_visit(self, node):
+        prefix = '--' * self._depth
+        logger.debug('%s visit %s', prefix, ast_to_string(node))
+        self._depth += 1
+        node = super(Optimizer, self).generic_visit(node)
+        self._depth -= 1
+        logger.debug('%s got %s', prefix, ast_to_string(node))
+        return node
     
     def visit_Name(self, node):
         self.generic_visit(node)
@@ -51,14 +67,21 @@ class Optimizer(ast.NodeTransformer):
         return node
 
     def visit_If(self, node):
-        # TODO - visit if part first, than decide which parts to visit
-        self.generic_visit(node)
+        node.test = self.visit(node.test)
         is_known, test_value = self._get_node_value_if_known(node.test)
         if is_known:
+            pass_ = ast.Pass(lineno=node.lineno, col_offset=node.col_offset)
             if test_value:
-                return node.body or ast.Pass()
+                if node.body:
+                    return self._visit(node.body) or pass_
+                else:
+                    return pass_
             else:
-                return node.orelse or ast.Pass()
+                if node.orelse:
+                    return self._visit(node.orelse) or pass_
+                else:
+                    return pass_
+        self.generic_visit(node)
         return node
 
     def visit_Call(self, node):
@@ -70,9 +93,10 @@ class Optimizer(ast.NodeTransformer):
     
     def visit_UnaryOp(self, node):
         self.generic_visit(node)
-        is_known, value = self._get_node_value_if_known(node.operand)
-        if is_known and isinstance(node.op, ast.Not):
-            return self._new_binding_node(not value, node)
+        if isinstance(node.op, ast.Not):
+            is_known, value = self._get_node_value_if_known(node.operand)
+            if is_known:
+                return self._new_binding_node(not value, node)
         return node
 
     def visit_BoolOp(self, node):
@@ -125,6 +149,12 @@ class Optimizer(ast.NodeTransformer):
             if not result:
                 return self._new_binding_node(False, node)
         return self._new_binding_node(True, node)
+
+    def _visit(self, node):
+        if isinstance(node, list):
+            return map(self.visit, node)
+        else:
+            return self.visit(node)
 
     def _fn_result_node_if_safe(self, fn, node):
         ''' Check that we know all fn args, and that fn is pure.

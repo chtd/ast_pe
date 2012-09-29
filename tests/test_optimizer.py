@@ -118,9 +118,13 @@ class TestIf(BaseOptimizerTestCase):
                     do_stuff()
                 else:
                     do_other_stuff()
+                    do_someother_stuff()
                 ''',
                 dict(x=x),
-                'do_other_stuff()')
+                '''
+                do_other_stuff()
+                do_someother_stuff()
+                ''')
 
     def test_if_empty_elimination(self):
         ''' Eliminate if completly, when corresponding clause is empty
@@ -136,7 +140,23 @@ class TestIf(BaseOptimizerTestCase):
                 'pass')
         
     def test_if_visit_only_true_branch(self):
-        pass # TODO - same idea as in test_and_short_circut
+        global_state = dict(cnt=0)
+        
+        @pure_function
+        def inc():
+            global_state['cnt'] += 1
+            return True
+
+        self._test_opt('if a: inc()', dict(a=False, inc=inc), 'pass')
+        self.assertEqual(global_state['cnt'], 0)
+
+        self._test_opt('''
+                if a: 
+                    dec()
+                else:
+                    inc()
+                ''', dict(a=False, inc=inc), 'True')
+        self.assertEqual(global_state['cnt'], 1)
 
 
 class TestFnEvaluation(BaseOptimizerTestCase):

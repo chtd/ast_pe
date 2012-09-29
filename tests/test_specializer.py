@@ -31,14 +31,6 @@ class TestSpecializer(BaseTestCase):
             return 1 + m
         self._test_partial_ast(
                 const_arg_substitution, const_arg_substitution_1)
-    
-    def test_if(self):
-        def simple(x, y):
-            if x > 2.18 * (x**3):
-                return y
-            else:
-                return y + 1
-        # TODO
 
     def test_if_on_stupid_power(self):
         def stupid_power(n, x):
