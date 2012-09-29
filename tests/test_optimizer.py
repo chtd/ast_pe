@@ -8,7 +8,7 @@ from ast_pe.decorators import pure_function
 
 
 class BaseOptimizerTestCase(BaseTestCase):
-    def _test_optimization(self, source, bindings, expected_source,
+    def _test_opt(self, source, bindings, expected_source,
             expected_new_bindings=None, print_source=False):
         ''' Test that with given bindings, Optimizer transforms
         source to expected_source.
@@ -29,19 +29,19 @@ class BaseOptimizerTestCase(BaseTestCase):
 
 class TestConstantPropagation(BaseOptimizerTestCase):
     def test_constant_propagation(self):
-        self._test_optimization(
+        self._test_opt(
                 'a * n + (m - 2) * (n + 1)', dict(n=5),
                 'a * 5 + (m - 2) * (5 + 1)')
-        self._test_optimization(
+        self._test_opt(
                 'a * n + (m - 2) * (n + 1)', dict(n=5.0),
                 'a * 5.0 + (m - 2) * (5.0 + 1)')
-        self._test_optimization(
+        self._test_opt(
                 'foo[:5]', dict(foo="bar"),
                 '"bar"[:5]')
-        self._test_optimization(
+        self._test_opt(
                 'foo', dict(foo=False),
                 'False')
-        self._test_optimization(
+        self._test_opt(
                 'foo', dict(foo=True),
                 'True')
 
@@ -50,22 +50,22 @@ class TestConstantPropagation(BaseOptimizerTestCase):
         subclasses
         '''
         class Int(int): pass
-        self._test_optimization(
+        self._test_opt(
                 'm * n', dict(m=Int(2)),
                 'm * n')
-        self._test_optimization(
+        self._test_opt(
                 'm * n', dict(m=Int(2), n=3),
                 'm * 3')
         class Float(float): pass
-        self._test_optimization(
+        self._test_opt(
                 'm * n', dict(m=Float(2.0)),
                 'm * n')
         class String(str): pass
-        self._test_optimization(
+        self._test_opt(
                 'm + n', dict(m=String('foo')),
                 'm + n')
         class Unicode(unicode): pass
-        self._test_optimization(
+        self._test_opt(
                 'm + n', dict(m=Unicode(u'foo')),
                 'm + n')
 
@@ -76,10 +76,10 @@ class TestIf(BaseOptimizerTestCase):
         true_values = [True, 1, 2.0, object(), "foo", int]
         self.assertTrue(all(true_values))
         for x in true_values:
-            self._test_optimization(
+            self._test_opt(
                     'if x: print "x is True"', dict(x=x),
                     'print "x is True"')
-        self._test_optimization('''
+        self._test_opt('''
             if x:
                 do_stuff()
             else:
@@ -91,7 +91,7 @@ class TestIf(BaseOptimizerTestCase):
     def test_if_no_elimination(self):
         ''' Test that there is no unneeded elimination of if test
         '''
-        self._test_optimization('''
+        self._test_opt('''
             if x:
                 do_stuff()
             else:
@@ -113,7 +113,7 @@ class TestIf(BaseOptimizerTestCase):
                 return False
         false_values = [0, '', [], {}, set(), False, None, Falsy()]
         for x in false_values:
-            self._test_optimization('''
+            self._test_opt('''
                 if x:
                     do_stuff()
                 else:
@@ -125,8 +125,8 @@ class TestIf(BaseOptimizerTestCase):
     def test_if_empty_elimination(self):
         ''' Eliminate if completly, when corresponding clause is empty
         '''
-        self._test_optimization('if x: do_stuff()', dict(x=False), 'pass')
-        self._test_optimization('''
+        self._test_opt('if x: do_stuff()', dict(x=False), 'pass')
+        self._test_opt('''
                 if x:
                     pass
                 else:
@@ -146,20 +146,14 @@ class TestFnEvaluation(BaseOptimizerTestCase):
         @pure_function
         def fn():
             return 'Hi!'
-        self._test_optimization(
-                'x = fn()', 
-                dict(fn=fn), 
-                'x = "Hi!"')
+        self._test_opt('x = fn()', dict(fn=fn), 'x = "Hi!"')
 
     def test_call_with_args(self):
         @pure_function
         def fn(x, y):
             return x + [y]
-        self._test_optimization(
-                'z = fn(x, y)',
-                dict(fn=fn, x=10),
-                'z = fn(10, y)')
-        self._test_optimization(
+        self._test_opt('z = fn(x, y)', dict(fn=fn, x=10), 'z = fn(10, y)')
+        self._test_opt(
                 'z = fn(x, y)',
                 dict(fn=fn, x=[10], y=20.0),
                 'z = __ast_pe_var_1',
@@ -178,31 +172,31 @@ class TestFnEvaluation(BaseOptimizerTestCase):
         @pure_function
         def fn():
             return 1 / 0
-        self._test_optimization('x = fn()', dict(fn=fn), 'x = fn()')
+        self._test_opt('x = fn()', dict(fn=fn), 'x = fn()')
 
 
 class TestBuiltinsEvaluation(BaseOptimizerTestCase):
     ''' Test that we can evaluate builtins
     '''
     def test_evaluate(self):
-        self._test_optimization('isinstance(n, int)', dict(n=10), 'True')
+        self._test_opt('isinstance(n, int)', dict(n=10), 'True')
 
 
 class TestUnaryOp(BaseOptimizerTestCase):
     def test_not(self):
-        self._test_optimization('not x', dict(x="s"), 'False')
-        self._test_optimization('not x', dict(x=0), 'True')
-        self._test_optimization('not 1', dict(), 'False')
+        self._test_opt('not x', dict(x="s"), 'False')
+        self._test_opt('not x', dict(x=0), 'True')
+        self._test_opt('not 1', dict(), 'False')
 
 
 class TestBoolOp(BaseOptimizerTestCase):
     def test_and(self):
-        self._test_optimization('a and b', dict(a=False), 'False')
-        self._test_optimization('a and b', dict(a=True), 'b')
-        self._test_optimization(
+        self._test_opt('a and b', dict(a=False), 'False')
+        self._test_opt('a and b', dict(a=True), 'b')
+        self._test_opt(
                 'a and b()', dict(a=True, b=pure_function(lambda: True)),
                 'True')
-        self._test_optimization(
+        self._test_opt(
                 'a and b and c and d', dict(a=True, c=True),
                 'b and d')
 
@@ -214,21 +208,19 @@ class TestBoolOp(BaseOptimizerTestCase):
             global_state['cnt'] += 1
             return True
 
-        self._test_optimization('a and inc()', dict(a=False, inc=inc), 'False')
+        self._test_opt('a and inc()', dict(a=False, inc=inc), 'False')
         self.assertEqual(global_state['cnt'], 0)
 
-        self._test_optimization('a and inc()', dict(a=True, inc=inc), 'True')
+        self._test_opt('a and inc()', dict(a=True, inc=inc), 'True')
         self.assertEqual(global_state['cnt'], 1)
 
     def test_or(self):
-        self._test_optimization('a or b', dict(a=False), 'b')
-        self._test_optimization('a or b', dict(a=True), 'True')
-        self._test_optimization(
+        self._test_opt('a or b', dict(a=False), 'b')
+        self._test_opt('a or b', dict(a=True), 'True')
+        self._test_opt(
                 'a or b()', dict(a=False, b=pure_function(lambda: True)),
                 'True')
-        self._test_optimization(
-                'a or b or c or d', dict(a=False, c=False),
-                'b or d')
+        self._test_opt('a or b or c or d', dict(a=False, c=False), 'b or d')
 
     def test_or_short_circut(self):
         global_state = dict(cnt=0)
@@ -238,26 +230,26 @@ class TestBoolOp(BaseOptimizerTestCase):
             global_state['cnt'] += 1
             return True
 
-        self._test_optimization('a or inc()', dict(a=True, inc=inc), 'True')
+        self._test_opt('a or inc()', dict(a=True, inc=inc), 'True')
         self.assertEqual(global_state['cnt'], 0)
 
-        self._test_optimization('a or inc()', dict(a=False, inc=inc), 'True')
+        self._test_opt('a or inc()', dict(a=False, inc=inc), 'True')
         self.assertEqual(global_state['cnt'], 1)
 
 
 class Testcompare(BaseOptimizerTestCase):
     def test_eq(self):
-        self._test_optimization('0 == 0', {}, 'True')
-        self._test_optimization('0 == 1', {}, 'False')
-        self._test_optimization('a == b', dict(a=1), '1 == b')
-        self._test_optimization('a == b', dict(b=1), 'a == 1')
-        self._test_optimization('a == b', dict(a=1, b=1), 'True')
-        self._test_optimization('a == b', dict(a=2, b=1), 'False')
-        self._test_optimization(
+        self._test_opt('0 == 0', {}, 'True')
+        self._test_opt('0 == 1', {}, 'False')
+        self._test_opt('a == b', dict(a=1), '1 == b')
+        self._test_opt('a == b', dict(b=1), 'a == 1')
+        self._test_opt('a == b', dict(a=1, b=1), 'True')
+        self._test_opt('a == b', dict(a=2, b=1), 'False')
+        self._test_opt(
                 'a == b == c == d', dict(a=2, c=2), 
                 '2 == b == 2 == d')
 
     def test_mix(self):
-        self._test_optimization('a < b >= c', dict(a=0, b=1, c=1), 'True')
-        self._test_optimization('a <= b > c', dict(a=0, b=1, c=1), 'False')
+        self._test_opt('a < b >= c', dict(a=0, b=1, c=1), 'True')
+        self._test_opt('a <= b > c', dict(a=0, b=1, c=1), 'False')
 
