@@ -230,7 +230,7 @@ class TestBoolOp(BaseOptimizerTestCase):
 
         self._test_optimization(
                 'a and inc()', dict(a=True, inc=inc),
-                '__ast_pe_var_1', dict(__ast_pe_var_1=True))
+                '__ast_pe_var_2', dict(__ast_pe_var_2=True))
         self.assertEqual(global_state['cnt'], 1)
 
 

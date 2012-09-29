@@ -80,21 +80,28 @@ class Optimizer(ast.NodeTransformer):
         return node
 
     def visit_BoolOp(self, node):
-        self.generic_visit(node) # FIXME - implement short-circuting
-        print ast_to_string(node)
-        if isinstance(node.op, ast.And):
-            for value_node in list(node.values):
-                is_known, value = self._get_node_value_if_known(value_node)
-                if is_known:
-                    if value:
-                        node.values.remove(value_node)
-                    else:
+        ''' and, or - handle short-circuting
+        '''
+        assert type(node.op) in (ast.And, ast.Or)
+        new_value_nodes = []
+        for value_node in node.values:
+            value_node = self.visit(value_node)
+            is_known, value = self._get_node_value_if_known(value_node)
+            if is_known:
+                if isinstance(node.op, ast.And):
+                    if not value:
                         return self._new_binding_node(False, node)
-        if not node.values:
+                elif isinstance(node.op, ast.Or):
+                    if value:
+                        return self._new_binding_node(value, node)
+            else:
+                new_value_nodes.append(value_node)
+        if not new_value_nodes:
             return self._new_binding_node(True, node)
-        elif len(node.values) == 1:
-            return node.values[0]
+        elif len(new_value_nodes) == 1:
+            return new_value_nodes[0]
         else:
+            node.values = new_value_nodes
             return node
 
     def _fn_result_node_if_safe(self, fn, node):
