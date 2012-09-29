@@ -99,6 +99,32 @@ class Optimizer(ast.NodeTransformer):
         else:
             node.values = new_value_nodes
             return node
+    
+    def visit_Compare(self, node):
+        ''' ==, >, etc. - evaluate only if all are know (FIXME)
+        '''
+        self.generic_visit(node)
+        is_known, value = self._get_node_value_if_known(node.left)
+        if not is_known:
+            return node
+        value_list = [value]
+        for value_node in node.comparators:
+            is_known, value = self._get_node_value_if_known(value_node)
+            if not is_known:
+                return node
+            value_list.append(value)
+        for a, b, op in zip(value_list, value_list[1:], node.ops):
+            result = {
+                    ast.Eq: lambda : a == b,
+                    ast.Lt: lambda : a < b,
+                    ast.Gt: lambda : a > b,
+                    ast.GtE: lambda : a >= b, 
+                    ast.LtE: lambda : a <= b, 
+                    ast.NotEq: lambda : a != b,
+                    }[type(op)]()
+            if not result:
+                return self._new_binding_node(False, node)
+        return self._new_binding_node(True, node)
 
     def _fn_result_node_if_safe(self, fn, node):
         ''' Check that we know all fn args, and that fn is pure.

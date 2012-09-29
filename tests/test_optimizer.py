@@ -243,3 +243,21 @@ class TestBoolOp(BaseOptimizerTestCase):
 
         self._test_optimization('a or inc()', dict(a=False, inc=inc), 'True')
         self.assertEqual(global_state['cnt'], 1)
+
+
+class Testcompare(BaseOptimizerTestCase):
+    def test_eq(self):
+        self._test_optimization('0 == 0', {}, 'True')
+        self._test_optimization('0 == 1', {}, 'False')
+        self._test_optimization('a == b', dict(a=1), '1 == b')
+        self._test_optimization('a == b', dict(b=1), 'a == 1')
+        self._test_optimization('a == b', dict(a=1, b=1), 'True')
+        self._test_optimization('a == b', dict(a=2, b=1), 'False')
+        self._test_optimization(
+                'a == b == c == d', dict(a=2, c=2), 
+                '2 == b == 2 == d')
+
+    def test_mix(self):
+        self._test_optimization('a < b >= c', dict(a=0, b=1, c=1), 'True')
+        self._test_optimization('a <= b > c', dict(a=0, b=1, c=1), 'False')
+
