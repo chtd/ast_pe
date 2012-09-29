@@ -52,6 +52,9 @@ class Optimizer(ast.NodeTransformer):
             elif value_type in self.STRING_TYPES:
                 return ast.Str(value,
                         lineno=node.lineno, col_offset=node.col_offset)
+            elif value is False or value is True:
+                return ast.Name(id='True' if value else 'False', ctx=ast.Load(),
+                        lineno=node.lineno, col_offset=node.col_offset)
         return node
 
     def visit_If(self, node):

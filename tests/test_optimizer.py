@@ -38,6 +38,12 @@ class TestConstantPropagation(BaseOptimizerTestCase):
         self._test_optimization(
                 'foo[:5]', dict(foo="bar"),
                 '"bar"[:5]')
+        self._test_optimization(
+                'foo', dict(foo=False),
+                'False')
+        self._test_optimization(
+                'foo', dict(foo=True),
+                'True')
 
     def test_constant_propagation_fail(self):
         ''' Test that constant propogation does not happen on primitive
