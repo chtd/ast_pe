@@ -233,4 +233,34 @@ class TestBoolOp(BaseOptimizerTestCase):
                 '__ast_pe_var_2', dict(__ast_pe_var_2=True))
         self.assertEqual(global_state['cnt'], 1)
 
+    def test_or(self):
+        self._test_optimization(
+                'a or b', dict(a=False),
+                'b')
+        self._test_optimization(
+                'a or b', dict(a=True),
+                '__ast_pe_var_1', dict(__ast_pe_var_1=True))
+        self._test_optimization(
+                'a or b()', dict(a=False, b=pure_function(lambda: True)),
+                '__ast_pe_var_2', dict(__ast_pe_var_2=True))
+        self._test_optimization(
+                'a or b or c or d', dict(a=False, c=False),
+                'b or d')
 
+    def test_or_short_circut(self):
+        global_state = dict(cnt=0)
+
+        @pure_function
+        def inc():
+            global_state['cnt'] += 1
+            return True
+
+        self._test_optimization(
+                'a or inc()', dict(a=True, inc=inc),
+                '__ast_pe_var_1', dict(__ast_pe_var_1=True))
+        self.assertEqual(global_state['cnt'], 0)
+
+        self._test_optimization(
+                'a or inc()', dict(a=False, inc=inc),
+                '__ast_pe_var_2', dict(__ast_pe_var_2=True))
+        self.assertEqual(global_state['cnt'], 1)
