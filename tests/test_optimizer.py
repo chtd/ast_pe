@@ -149,22 +149,21 @@ class TestFnEvaluation(BaseOptimizerTestCase):
         self._test_optimization(
                 'x = fn()', 
                 dict(fn=fn), 
-                'x = __ast_pe_var_1',
-                dict(__ast_pe_var_1="Hi!"))
+                'x = "Hi!"')
 
     def test_call_with_args(self):
         @pure_function
         def fn(x, y):
-            return x + y
+            return x + [y]
         self._test_optimization(
                 'z = fn(x, y)',
                 dict(fn=fn, x=10),
                 'z = fn(10, y)')
         self._test_optimization(
                 'z = fn(x, y)',
-                dict(fn=fn, x=10, y=20.0),
+                dict(fn=fn, x=[10], y=20.0),
                 'z = __ast_pe_var_1',
-                dict(__ast_pe_var_1=30.0))
+                dict(__ast_pe_var_1=[10, 20.0]))
 
     def test_call_with_starargs(self):
         pass # TODO
@@ -186,37 +185,23 @@ class TestBuiltinsEvaluation(BaseOptimizerTestCase):
     ''' Test that we can evaluate builtins
     '''
     def test_evaluate(self):
-        self._test_optimization(
-                'isinstance(n, int)',
-                dict(n=10),
-                '__ast_pe_var_1',
-                dict(__ast_pe_var_1=True))
+        self._test_optimization('isinstance(n, int)', dict(n=10), 'True')
 
 
 class TestUnaryOp(BaseOptimizerTestCase):
     def test_not(self):
-        self._test_optimization(
-                'not x', dict(x="s"), 
-                '__ast_pe_var_1', dict(__ast_pe_var_1=False))
-        self._test_optimization(
-                'not x', dict(x=0), 
-                '__ast_pe_var_1', dict(__ast_pe_var_1=True))
-        self._test_optimization(
-                'not 1', dict(), 
-                '__ast_pe_var_1', dict(__ast_pe_var_1=False))
+        self._test_optimization('not x', dict(x="s"), 'False')
+        self._test_optimization('not x', dict(x=0), 'True')
+        self._test_optimization('not 1', dict(), 'False')
 
 
 class TestBoolOp(BaseOptimizerTestCase):
     def test_and(self):
-        self._test_optimization(
-                'a and b', dict(a=False),
-                '__ast_pe_var_1', dict(__ast_pe_var_1=False))
-        self._test_optimization(
-                'a and b', dict(a=True),
-                'b')
+        self._test_optimization('a and b', dict(a=False), 'False')
+        self._test_optimization('a and b', dict(a=True), 'b')
         self._test_optimization(
                 'a and b()', dict(a=True, b=pure_function(lambda: True)),
-                '__ast_pe_var_2', dict(__ast_pe_var_2=True))
+                'True')
         self._test_optimization(
                 'a and b and c and d', dict(a=True, c=True),
                 'b and d')
@@ -229,26 +214,18 @@ class TestBoolOp(BaseOptimizerTestCase):
             global_state['cnt'] += 1
             return True
 
-        self._test_optimization(
-                'a and inc()', dict(a=False, inc=inc),
-                '__ast_pe_var_1', dict(__ast_pe_var_1=False))
+        self._test_optimization('a and inc()', dict(a=False, inc=inc), 'False')
         self.assertEqual(global_state['cnt'], 0)
 
-        self._test_optimization(
-                'a and inc()', dict(a=True, inc=inc),
-                '__ast_pe_var_2', dict(__ast_pe_var_2=True))
+        self._test_optimization('a and inc()', dict(a=True, inc=inc), 'True')
         self.assertEqual(global_state['cnt'], 1)
 
     def test_or(self):
-        self._test_optimization(
-                'a or b', dict(a=False),
-                'b')
-        self._test_optimization(
-                'a or b', dict(a=True),
-                '__ast_pe_var_1', dict(__ast_pe_var_1=True))
+        self._test_optimization('a or b', dict(a=False), 'b')
+        self._test_optimization('a or b', dict(a=True), 'True')
         self._test_optimization(
                 'a or b()', dict(a=False, b=pure_function(lambda: True)),
-                '__ast_pe_var_2', dict(__ast_pe_var_2=True))
+                'True')
         self._test_optimization(
                 'a or b or c or d', dict(a=False, c=False),
                 'b or d')
@@ -261,12 +238,8 @@ class TestBoolOp(BaseOptimizerTestCase):
             global_state['cnt'] += 1
             return True
 
-        self._test_optimization(
-                'a or inc()', dict(a=True, inc=inc),
-                '__ast_pe_var_1', dict(__ast_pe_var_1=True))
+        self._test_optimization('a or inc()', dict(a=True, inc=inc), 'True')
         self.assertEqual(global_state['cnt'], 0)
 
-        self._test_optimization(
-                'a or inc()', dict(a=False, inc=inc),
-                '__ast_pe_var_2', dict(__ast_pe_var_2=True))
+        self._test_optimization('a or inc()', dict(a=False, inc=inc), 'True')
         self.assertEqual(global_state['cnt'], 1)

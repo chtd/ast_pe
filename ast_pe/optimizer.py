@@ -44,17 +44,10 @@ class Optimizer(ast.NodeTransformer):
     def visit_Name(self, node):
         self.generic_visit(node)
         if isinstance(node.ctx, ast.Load) and node.id in self.bindings:
-            value = self.bindings[node.id]
-            value_type = type(value)
-            if value_type in self.NUMBER_TYPES:
-                return ast.Num(value, 
-                        lineno=node.lineno, col_offset=node.col_offset)
-            elif value_type in self.STRING_TYPES:
-                return ast.Str(value,
-                        lineno=node.lineno, col_offset=node.col_offset)
-            elif value is False or value is True:
-                return ast.Name(id='True' if value else 'False', ctx=ast.Load(),
-                        lineno=node.lineno, col_offset=node.col_offset)
+            literal_node = self._get_literal_node(
+                    self.bindings[node.id], node)
+            if literal_node is not None:
+                return literal_node
         return node
 
     def visit_If(self, node):
@@ -163,15 +156,29 @@ class Optimizer(ast.NodeTransformer):
         elif isinstance(node, ast.Str):
             return known(node.s)
         return False, None
+
+    def _get_literal_node(self, value, replaced_node):
+        kwargs = dict(lineno=replaced_node.lineno, 
+                col_offset=replaced_node.col_offset)
+        if type(value) in self.NUMBER_TYPES:
+            return ast.Num(value, **kwargs)
+        elif type(value) in self.STRING_TYPES:
+            return ast.Str(value, **kwargs)
+        elif value is False or value is True:
+            return ast.Name(
+                    id='True' if value else 'False', ctx=ast.Load(), **kwargs)
     
     def _new_binding_node(self, value, replaced_node):
         ''' Generate unique variable name, add it to bindings with given value,
         and return the node that loads generated variable.
         '''
-        self._var_count += 1
-        var_name = '__ast_pe_var_%d' % self._var_count
-        self.bindings[var_name] = value
-        # self.generic_visit(var_node) - TODO - apply other optimizations
-        return ast.Name(id=var_name, ctx=ast.Load(),
-                lineno=replaced_node.lineno, 
-                col_offset=replaced_node.col_offset) 
+        literal_node = self._get_literal_node(value, replaced_node)
+        if literal_node is not None:
+            return literal_node
+        else:
+            self._var_count += 1
+            var_name = '__ast_pe_var_%d' % self._var_count
+            self.bindings[var_name] = value
+            return ast.Name(id=var_name, ctx=ast.Load(),
+                    lineno=replaced_node.lineno, 
+                    col_offset=replaced_node.col_offset) 
