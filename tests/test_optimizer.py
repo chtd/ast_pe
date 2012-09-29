@@ -207,6 +207,7 @@ class TestUnaryOp(BaseOptimizerTestCase):
         self._test_opt('not x', dict(x="s"), 'False')
         self._test_opt('not x', dict(x=0), 'True')
         self._test_opt('not 1', dict(), 'False')
+        self._test_opt('not False', dict(), 'True')
 
 
 class TestBoolOp(BaseOptimizerTestCase):
@@ -237,6 +238,7 @@ class TestBoolOp(BaseOptimizerTestCase):
     def test_or(self):
         self._test_opt('a or b', dict(a=False), 'b')
         self._test_opt('a or b', dict(a=True), 'True')
+        self._test_opt('a or b', dict(a=False, b=False), 'False')
         self._test_opt(
                 'a or b()', dict(a=False, b=pure_function(lambda: True)),
                 'True')
@@ -255,6 +257,35 @@ class TestBoolOp(BaseOptimizerTestCase):
 
         self._test_opt('a or inc()', dict(a=False, inc=inc), 'True')
         self.assertEqual(global_state['cnt'], 1)
+    
+    def test_mix(self):
+        self._test_opt(
+                '''
+                if not isinstance(n, int) or n < 0:
+                    foo()
+                else:
+                    bar()
+                ''',
+                dict(n=0),
+                'bar()')
+        self._test_opt(
+                '''
+                if not isinstance(n, int) or n < 0:
+                    foo()
+                else:
+                    bar()
+                ''',
+                dict(n=-1),
+                'foo()')
+        self._test_opt(
+                '''
+                if not isinstance(n, int) or n < 0:
+                    foo()
+                else:
+                    bar()
+                ''',
+                dict(n=1.0),
+                'foo()')
 
 
 class Testcompare(BaseOptimizerTestCase):

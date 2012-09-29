@@ -1,10 +1,10 @@
 # -*- encoding: utf-8 -*-
 
 import re
-import sys
 import ast
 import inspect
 import unittest
+import logging
 
 import meta.asttools
 
@@ -70,3 +70,15 @@ class BaseTestCase(unittest.TestCase):
                           expected_ast=ast_to_source(expected_ast),
                           test_ast=ast_to_source(test_ast))
         self.assertEqual(dump1, dump2)
+
+
+def get_logger(name, debug=False):
+    logger = logging.getLogger(name=name)
+    level = logging.DEBUG if debug else logging.INFO
+    logger.setLevel(level)
+    ch = logging.StreamHandler()
+    ch.setLevel(level)
+    formatter = logging.Formatter('%(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    return logger

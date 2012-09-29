@@ -1,14 +1,12 @@
 # -*- encoding: utf-8 -*-
 
 import __builtin__
-import logging
 
 import ast
-from ast_pe.utils import ast_to_string
+from ast_pe.utils import ast_to_string, get_logger
 
 
-logger = logging.getLogger(name=__name__)
-logger.setLevel(logging.INFO)
+logger = get_logger(__name__, debug=False)
 
 
 class Optimizer(ast.NodeTransformer):
@@ -117,7 +115,7 @@ class Optimizer(ast.NodeTransformer):
             else:
                 new_value_nodes.append(value_node)
         if not new_value_nodes:
-            return self._new_binding_node(True, node)
+            return self._new_binding_node(isinstance(node.op, ast.And), node)
         elif len(new_value_nodes) == 1:
             return new_value_nodes[0]
         else:
