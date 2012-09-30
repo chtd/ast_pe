@@ -13,7 +13,7 @@ class Optimizer(ast.NodeTransformer):
     
     NUMBER_TYPES = (int, long, float)
     STRING_TYPES = (str, unicode)
-    # FIXME - only functions with immutable results?
+    # functions that return the same result and do not change environment
     PURE_FUNCTIONS = (
             abs, divmod,  staticmethod,
             all, enumerate, int, ord, str,
@@ -24,7 +24,7 @@ class Optimizer(ast.NodeTransformer):
             bytearray, float, list, unichr,
             callable, format,  reduce, unicode,
             chr, frozenset, long,
-            classmethod, getattr, map, repr,
+            classmethod, getattr, map, repr, xrange,
             cmp,  max, reversed, zip,
             hasattr,  round,
             complex, hash, min, set, apply,
@@ -34,15 +34,15 @@ class Optimizer(ast.NodeTransformer):
             )
 
     # TODO - handle variable mutation and assignment, 
-    # to kick things from bindings
+    # to kick things from constants
 
-    def __init__(self, bindings):
+    def __init__(self, constants):
         ''' 
-        bindings is a dict names-> values of variables known at compile time,
+        constants is a dict names-> values of variables known at compile time,
         that is populated with newly bound variables (results of calculations
         done at compile time)
         '''
-        self.bindings = bindings
+        self.constants = constants
         self._var_count = 0
         self._depth = 0
         super(Optimizer, self).__init__()
@@ -63,9 +63,9 @@ class Optimizer(ast.NodeTransformer):
 
     def visit_Name(self, node):
         self.generic_visit(node)
-        if isinstance(node.ctx, ast.Load) and node.id in self.bindings:
+        if isinstance(node.ctx, ast.Load) and node.id in self.constants:
             literal_node = self._get_literal_node(
-                    self.bindings[node.id], node)
+                    self.constants[node.id], node)
             if literal_node is not None:
                 return literal_node
         return node
@@ -167,7 +167,6 @@ class Optimizer(ast.NodeTransformer):
     def _eliminate_dead_code(self, node_list):
         ''' Dead code elimination - remove "pass", code after return
         '''
-        print '_eliminate_dead_code', node_list
         for i, node in enumerate(list(node_list)):
             if isinstance(node, ast.Pass) and len(node_list) > 1:
                 node_list.remove(node)
@@ -220,8 +219,8 @@ class Optimizer(ast.NodeTransformer):
         known = lambda x: (True, x)
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
             name = node.id
-            if name in self.bindings:
-                return known(self.bindings[name])
+            if name in self.constants:
+                return known(self.constants[name])
             else:
                 # TODO - how to check builtin redefinitions?
                 if hasattr(__builtin__, name):
@@ -244,7 +243,7 @@ class Optimizer(ast.NodeTransformer):
                     id='True' if value else 'False', ctx=ast.Load(), **kwargs)
     
     def _new_binding_node(self, value, replaced_node):
-        ''' Generate unique variable name, add it to bindings with given value,
+        ''' Generate unique variable name, add it to constants with given value,
         and return the node that loads generated variable.
         '''
         literal_node = self._get_literal_node(value, replaced_node)
@@ -253,7 +252,7 @@ class Optimizer(ast.NodeTransformer):
         else:
             self._var_count += 1
             var_name = '__ast_pe_var_%d' % self._var_count
-            self.bindings[var_name] = value
+            self.constants[var_name] = value
             return ast.Name(id=var_name, ctx=ast.Load(),
                     lineno=replaced_node.lineno, 
                     col_offset=replaced_node.col_offset) 

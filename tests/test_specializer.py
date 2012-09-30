@@ -87,14 +87,11 @@ class TestSpecializer(BaseTestCase):
         partial_kwargs = eval(partial_fn.__doc__)
         fn = specialized_fn(base_fn, **partial_kwargs)
         for kw in kwargs_list:
-            self.assertFuncEqualOn(
-                    functools.partial(base_fn, **partial_kwargs),
-                    partial_fn, 
-                    **kw)
-            self.assertFuncEqualOn(
-                    functools.partial(base_fn, **partial_kwargs),
-                    fn,
-                    **kw)
+            for f in (fn, partial_fn):
+                for _ in xrange(2):
+                    self.assertFuncEqualOn(
+                            functools.partial(base_fn, **partial_kwargs),
+                            f, **kw)
 
     def assertFuncEqualOn(self, fn1, fn2, *args, **kwargs):
         ''' Check that functions are the same, or raise the same exception
