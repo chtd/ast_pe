@@ -22,15 +22,6 @@ class TestSpecializer(BaseTestCase):
                 1.0 / 2 * 4)
         self.assertEqual(specialized_fn(args_kwargs, 2, c=4)(6),
                 2.0 / 6 * 4)
-    
-    def test_const_arg_substitution(self):
-        def const_arg_substitution(n, m):
-            return n + m
-        def const_arg_substitution_1(m):
-            '{"n": 1}'
-            return 1 + m
-        self._test_partial_ast(
-                const_arg_substitution, const_arg_substitution_1)
 
     def test_if_on_stupid_power(self):
         def stupid_power(n, x):
@@ -45,53 +36,23 @@ class TestSpecializer(BaseTestCase):
                 for _ in xrange(n):
                     v *= x
                 return v
-        def stupid_power_foo(x):
-            '{"n": "foo"}'
-            raise ValueError('Base should be a positive integer')
-        def stupid_power_0(x):
-            '{"n": 0}'
-            return 1
-        def stupid_power_1(x):
-            '{"n": 1}'
-            return x
-        def stupid_power_2(x):
-            '{"n": 2}'
-            v = 1
-            for _ in xrange(2):
-                v *= x
-            return v
         kwargs_list = [{'x': v} for v in [0, 1, 0.01, 5e10]]
-        for fn in (stupid_power_foo, 
-                stupid_power_0, stupid_power_1, stupid_power_2):
-            self._test_partial_ast(stupid_power, fn)
-            self._test_partial_fn(stupid_power, fn, kwargs_list)
+        for n in ('foo', 0, 1, 2, 3):
+            self._test_partial_fn(stupid_power, dict(n=n), kwargs_list)
 
     # Utility methods
 
-    def _test_partial_ast(self, base_fn, partial_fn):
-        ''' Check that partial evaluations of base_fn with args taken
-        from partial_fn.__doc__ gives the same AST as partial_fn
-        '''
-        partial_kwargs = eval(partial_fn.__doc__)
-        partial_ast, _ = specialized_ast(fn_to_ast(base_fn), **partial_kwargs)
-        expected_ast = fn_to_ast(partial_fn)
-        expected_ast.body[0].name = base_fn.__name__ # rename fn
-        del expected_ast.body[0].body[0] # remove __doc__
-        self.assertASTEqual(partial_ast, expected_ast)
-
-    def _test_partial_fn(self, base_fn, partial_fn, kwargs_list):
+    def _test_partial_fn(self, base_fn, partial_kwargs, kwargs_list):
         ''' Check that partial evaluation of base_fn with partial_args
         gives the same result on args_list
-        as functools.partial(base_fn, partial_args), and partial_fn
+        as functools.partial(base_fn, partial_args)
         '''
-        partial_kwargs = eval(partial_fn.__doc__)
         fn = specialized_fn(base_fn, **partial_kwargs)
         for kw in kwargs_list:
-            for f in (fn, partial_fn):
-                for _ in xrange(2):
-                    self.assertFuncEqualOn(
-                            functools.partial(base_fn, **partial_kwargs),
-                            f, **kw)
+            for _ in xrange(2):
+                self.assertFuncEqualOn(
+                        functools.partial(base_fn, **partial_kwargs),
+                        fn, **kw)
 
     def assertFuncEqualOn(self, fn1, fn2, *args, **kwargs):
         ''' Check that functions are the same, or raise the same exception

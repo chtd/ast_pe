@@ -385,6 +385,43 @@ class TestRemoveDeadCode(BaseOptimizerTestCase):
                     return x
                 ''')
 
+class TestFunctional(BaseOptimizerTestCase):
+    def test_if_on_stupid_power(self):
+        source = '''
+        def fn(x, n):
+            if not isinstance(n, int) or n < 0:
+                raise ValueError('Base should be a positive integer')
+            else:
+                if n == 0:
+                    return 1
+                if n == 1:
+                    return x
+                v = 1
+                for _ in range(n):
+                    v *= x
+                return v
+            '''
+        self._test_opt(source, dict(n='foo'), '''
+        def fn(x, n):
+            raise ValueError('Base should be a positive integer')
+            ''')
+        self._test_opt(source, dict(n=0), '''
+        def fn(x, n):
+            return 1
+            ''')
+        self._test_opt(source, dict(n=1), '''
+        def fn(x, n):
+            return x
+            ''')
+        self._test_opt(source, dict(n=2), '''
+        def fn(x, n):
+            v = 1
+            for _ in __ast_pe_var_1:
+                v *= x
+            return v
+            ''',
+            dict(__ast_pe_var_1=range(2)))
+
 
 class TestNodeResultMutation(BaseOptimizerTestCase):
     ''' Test that nodes whose values are known but are mutated later
