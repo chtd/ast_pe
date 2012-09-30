@@ -10,10 +10,14 @@ logger = get_logger(__name__, debug=False)
 
 
 class Optimizer(ast.NodeTransformer):
+    ''' Simplify AST, given information about what variables are known
+    '''
+
     
     NUMBER_TYPES = (int, long, float)
     STRING_TYPES = (str, unicode)
-    # functions that return the same result and do not change environment
+    # build-in functions that return the same result for the same arguments
+    # and do not change their arguments or global environment
     PURE_FUNCTIONS = (
             abs, divmod,  staticmethod,
             all, enumerate, int, ord, str,
@@ -32,9 +36,6 @@ class Optimizer(ast.NodeTransformer):
             dict, hex, object, slice, coerce,
             dir, id, oct, sorted,
             )
-
-    # TODO - handle variable mutation and assignment, 
-    # to kick things from constants
 
     def __init__(self, constants):
         ''' 
