@@ -12,8 +12,6 @@ logger = get_logger(__name__, debug=False)
 class Optimizer(ast.NodeTransformer):
     ''' Simplify AST, given information about what variables are known
     '''
-
-    
     NUMBER_TYPES = (int, long, float)
     STRING_TYPES = (str, unicode)
     # build-in functions that return the same result for the same arguments
@@ -37,13 +35,14 @@ class Optimizer(ast.NodeTransformer):
             dir, id, oct, sorted,
             )
 
-    def __init__(self, constants):
+    def __init__(self, constants, data_flow):
         ''' 
         constants is a dict names-> values of variables known at compile time,
         that is populated with newly bound variables (results of calculations
         done at compile time)
         '''
         self.constants = constants
+        self.data_flow = data_flow
         self._var_count = 0
         self._depth = 0
         super(Optimizer, self).__init__()

@@ -5,10 +5,11 @@ import ast
 from ast_pe.utils import BaseTestCase, shift_source, ast_to_string
 from ast_pe.optimizer import Optimizer
 from ast_pe.decorators import pure_function
+from ast_pe.dataflow import DataFlowAnalyzer
 
 
 class BaseOptimizerTestCase(BaseTestCase):
-    def _test_opt(self, source, constants, expected_source,
+    def _test_opt(self, source, constants, expected_source=None,
             expected_new_constants=None, print_source=False):
         ''' Test that with given constants, Optimizer transforms
         source to expected_source.
@@ -17,8 +18,14 @@ class BaseOptimizerTestCase(BaseTestCase):
         '''
         if print_source:
             print ast_to_string(ast.parse(shift_source(source)))
+        if expected_source is None:
+            expected_source = source
+        ast_tree = ast.parse(shift_source(source))
+        dataflow_analyzer = DataFlowAnalyzer()
+        dataflow_analyzer.visit(ast_tree)
+        optimizer = Optimizer(constants, dataflow_analyzer.data_flow)
         self.assertASTEqual(
-                Optimizer(constants).visit(ast.parse(shift_source(source))),
+                optimizer.visit(ast_tree),
                 ast.parse(shift_source(expected_source)))
         if expected_new_constants:
             for k in expected_new_constants:
@@ -377,3 +384,25 @@ class TestRemoveDeadCode(BaseOptimizerTestCase):
                     x += 1
                     return x
                 ''')
+
+
+class TestNodeResultMutation(BaseOptimizerTestCase):
+    ''' Test that nodes whose values are known but are mutated later
+    are not substituted with values calculated at compile time.
+    '''
+    def test_method_mutation(self):
+        self._test_opt(
+                '''
+                if x:
+                    bar()
+                ''',
+                dict(x=object()),
+                'bar()')
+        self._test_opt(
+                '''
+                x.foo()
+                if x:
+                    bar()
+                ''',
+                dict(x=object()))
+
