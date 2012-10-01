@@ -3,15 +3,14 @@
 import ast
 
 from ast_pe.utils import BaseTestCase, shift_source, ast_to_string
-from ast_pe.optimizer import Optimizer
+from ast_pe.optimizer import optimized_ast
 from ast_pe.decorators import pure_function
-from ast_pe.dataflow import DataFlowAnalyzer
 
 
 class BaseOptimizerTestCase(BaseTestCase):
     def _test_opt(self, source, constants, expected_source=None,
             expected_new_constants=None, print_source=False):
-        ''' Test that with given constants, Optimizer transforms
+        ''' Test that with given constants, optimized_ast transforms
         source to expected_source.
         It expected_new_constants is given, we expect Optimizer to add
         them to constants.
@@ -21,11 +20,8 @@ class BaseOptimizerTestCase(BaseTestCase):
         if expected_source is None:
             expected_source = source
         ast_tree = ast.parse(shift_source(source))
-        dataflow_analyzer = DataFlowAnalyzer()
-        dataflow_analyzer.visit(ast_tree)
-        optimizer = Optimizer(constants, dataflow_analyzer.data_flow)
         self.assertASTEqual(
-                optimizer.visit(ast_tree),
+                optimized_ast(ast_tree, constants),
                 ast.parse(shift_source(expected_source)))
         if expected_new_constants:
             for k in expected_new_constants:
@@ -423,8 +419,8 @@ class TestFunctional(BaseOptimizerTestCase):
             dict(__ast_pe_var_1=range(2)))
 
 
-class TestNodeResultMutation(BaseOptimizerTestCase):
-    ''' Test that nodes whose values are known but are mutated later
+class TestMutation(BaseOptimizerTestCase):
+    ''' Test that nodes whose values are known first but are mutated later
     are not substituted with values calculated at compile time.
     '''
     def test_method_mutation(self):

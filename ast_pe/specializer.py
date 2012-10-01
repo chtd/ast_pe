@@ -1,8 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from ast_pe.utils import fn_to_ast, eval_ast
-from ast_pe.optimizer import Optimizer
-from ast_pe.dataflow import DataFlowAnalyzer
+from ast_pe.optimizer import optimized_ast
 
 
 def specialized_fn(fn, *args, **kwargs):
@@ -32,9 +31,6 @@ def specialized_ast(fn_ast, *args, **kwargs):
         for kwarg_name, kwarg_value in kwargs.iteritems():
             constants[kwarg_name] = kwarg_value
             fn_args.args.remove(arg_by_id[kwarg_name])
-    dataflow_analyzer = DataFlowAnalyzer()
-    dataflow_analyzer.visit(fn_ast)
-    optimizer = Optimizer(constants, dataflow_analyzer.data_flow)
-    return optimizer.visit(fn_ast), optimizer.constants
+    return optimized_ast(fn_ast, constants), constants
 
 

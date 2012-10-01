@@ -4,14 +4,28 @@ import __builtin__
 
 import ast
 from ast_pe.utils import ast_to_string, get_logger
+from ast_pe.dataflow import DataFlow
 
 
 logger = get_logger(__name__, debug=False)
 
 
+def optimized_ast(ast_tree, constants):
+    ''' Try running Optimizer until it finishes without rollback
+    '''
+    while True:
+        data_flow = DataFlow()
+        try:
+            optimizer = Optimizer(constants, data_flow)
+            return optimizer.visit(ast_tree)
+        except Optimizer.Rollback:
+            continue
+
+
 class Optimizer(ast.NodeTransformer):
     ''' Simplify AST, given information about what variables are known
     '''
+    class Rollback(Exception): pass
     NUMBER_TYPES = (int, long, float)
     STRING_TYPES = (str, unicode)
     # build-in functions that return the same result for the same arguments

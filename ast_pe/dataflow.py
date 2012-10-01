@@ -2,6 +2,10 @@
 
 import ast
 
+from ast_pe.utils import ast_to_string
+
+# FIXME - it SHOULD interleave with Optimizer, so not clear what will stay here
+
 # FIXME - it operates on AST for now, but should operate on CFG instread,
 # will change it later, should be easyish
 
@@ -24,3 +28,10 @@ class DataFlowAnalyzer(ast.NodeVisitor):
     def __init__(self):
         self.data_flow = DataFlow()
         super(DataFlowAnalyzer, self).__init__()
+
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if isinstance(node.func, ast.Attribute):
+            # FIXME???
+            self.data_flow.mutated_variables.add(node.func.value.id)
+        print ast_to_string(node)
