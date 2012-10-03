@@ -13,7 +13,7 @@ turning this::
         else:
             return x * power(x, n - 1)
 
-given that *n* equals e.g. 27, into this (**FIXME** well, not quite yet)::
+into this (given that n equals e.g. 27)::
 
     def power_27(x):
         _pow_2 = x * x
@@ -25,12 +25,15 @@ given that *n* equals e.g. 27, into this (**FIXME** well, not quite yet)::
         _pow_27 = _pow_26 * x
         return _pow_27
 
-that runs 10 time faster under CPython. Generaly partial evaluation
+(**FIXME** - well, not quite yet)
+that runs 10 time faster under CPython. 
+
+Generaly partial evaluation
 is beneficial if inputs of some function (or a set of functions, or methods)
-can be decomposed into static (seldom changing) and dynamic. Than we
+can be decomposed into *static* (seldom changing) and *dynamic*. Than we
 create specialied version of the algorithm for each encoutered static input,
 and use it to process dynamic input. For example, for an interpreter
-static input is the program, and dynamic input is the input to that program.
+*static input* is the program, and *dynamic input* is the input to that program.
 Partial evaluation turns interpreter into a compiler, which runs much faster.
 
 The API is very simple, almost identical to ``functools.partial``::
