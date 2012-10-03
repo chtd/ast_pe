@@ -102,8 +102,20 @@ class Optimizer(ast.NodeTransformer):
     def visit_Call(self, node):
         self.generic_visit(node)
         is_known, fn = self._get_node_value_if_known(node.func)
-        if is_known:
+        if is_known and self._is_pure_fn(fn):
             return self._fn_result_node_if_safe(fn, node)
+        else:
+            # check for mutations from function call:
+            # - it can also mutate the arguments
+            #import pdb; pdb.set_trace()
+            if isinstance(node.func, ast.Attribute):
+                # if this a method call, it can mutate "self"
+                obj_node, attr = node.func.value, node.func.attr
+                is_known, obj = self._get_node_value_if_known(obj_node)
+                if is_known:
+                    # TODO - obj can be mutated!
+                    pass
+            pass
         return node
     
     def visit_UnaryOp(self, node):
@@ -189,30 +201,28 @@ class Optimizer(ast.NodeTransformer):
         return node_list
 
     def _fn_result_node_if_safe(self, fn, node):
-        ''' Check that we know all fn args, and that fn is pure.
+        ''' Check that we know all fn args.
         Than call it and return a node representing the value.
         It we can not call fn, just return node.
+        Assume that fn is pure.
         '''
-        assert isinstance(node, ast.Call)
-        if self._is_pure_fn(fn):
-            args = []
-            for arg_node in node.args:
-                is_known, value = self._get_node_value_if_known(arg_node)
-                if is_known:
-                    args.append(value)
-                else:
-                    return node
-            # TODO - cases listed below
-            assert not node.kwargs and not node.keywords and not node.starargs
-            # TODO - handle exceptions 
-            try:
-                fn_value = fn(*args)
-            except:
-                # do not optimize the call away to leave original exception
-                return node
+        assert isinstance(node, ast.Call) and self._is_pure_fn(fn)
+        args = []
+        for arg_node in node.args:
+            is_known, value = self._get_node_value_if_known(arg_node)
+            if is_known:
+                args.append(value)
             else:
-                return self._new_binding_node(fn_value, node)
-        return node 
+                return node
+        # TODO - cases listed in assert
+        assert not node.kwargs and not node.keywords and not node.starargs
+        try:
+            fn_value = fn(*args)
+        except:
+            # do not optimize the call away to leave original exception
+            return node
+        else:
+            return self._new_binding_node(fn_value, node)
 
     def _is_pure_fn(self, fn):
         ''' fn has no side effects, and its value is determined only by
