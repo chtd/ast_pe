@@ -6,7 +6,7 @@ import ast
 from ast_pe.utils import ast_to_string, get_logger
 
 
-logger = get_logger(__name__, debug=False)
+logger = get_logger(__name__, debug=True)
 
 
 def optimized_ast(ast_tree, constants):
@@ -18,6 +18,7 @@ def optimized_ast(ast_tree, constants):
         try:
             new_ast = optimizer.visit(ast_tree)
         except Optimizer.Rollback:
+            logger.debug('rollback', exc_info=True)
             # we gathered more knowledge and want to try again
             continue
         else:
@@ -80,11 +81,11 @@ class Optimizer(ast.NodeTransformer):
         ''' Just some logging
         '''
         prefix = '--' * self._depth
-        logger.debug('%s visit %s', prefix, ast_to_string(node))
+        logger.debug('%s visit:\n%s', prefix, ast_to_string(node))
         self._depth += 1
         node = super(Optimizer, self).generic_visit(node)
         self._depth -= 1
-        logger.debug('%s got %s', prefix, ast_to_string(node))
+        logger.debug('%s result:\n%s', prefix, ast_to_string(node))
         return node
     
     def visit_FunctionDef(self, node):
@@ -330,4 +331,4 @@ class Optimizer(ast.NodeTransformer):
             # obj can be mutated, and we can not assume we know it
             # so we have to rollback here
             del self._constants[node.id]
-            raise self.Rollback()
+            raise self.Rollback('%s is mutated' % node.id)
