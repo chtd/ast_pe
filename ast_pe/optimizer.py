@@ -6,7 +6,7 @@ import ast
 from ast_pe.utils import ast_to_string, get_logger
 
 
-logger = get_logger(__name__, debug=True)
+logger = get_logger(__name__, debug=False)
 
 
 def optimized_ast(ast_tree, constants):

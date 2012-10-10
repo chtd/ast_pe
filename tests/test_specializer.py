@@ -36,30 +36,29 @@ class TestSpecializer(BaseTestCase):
                 for _ in xrange(n):
                     v *= x
                 return v
-        kwargs_list = [{'x': v} for v in [0, 1, 0.01, 5e10]]
         for n in ('foo', 0, 1, 2, 3):
-            self._test_partial_fn(stupid_power, dict(n=n), kwargs_list)
+            for x in [0, 1, 0.01, 5e10]:
+                self._test_partial_fn(
+                        stupid_power, lambda : dict(n=n), lambda : {'x': x })
     
     def test_mutation_via_method(self):
         def mutty(x, y):
             x.append('foo')
             return x + [y]
-        for x in [[1], [2, [1]]]:
-            self._test_partial_fn(mutty, dict(x=x), [{'y': 2}])
+        self._test_partial_fn(mutty, lambda : dict(x=[1]), lambda : {'y': 2 })
 
     # Utility methods
 
-    def _test_partial_fn(self, base_fn, partial_kwargs, kwargs_list):
+    def _test_partial_fn(self, base_fn, get_partial_kwargs, get_kwargs):
         ''' Check that partial evaluation of base_fn with partial_args
         gives the same result on args_list
         as functools.partial(base_fn, partial_args)
         '''
-        fn = specialized_fn(base_fn, **partial_kwargs)
-        for kw in kwargs_list:
-            partial_fn = functools.partial(base_fn, **partial_kwargs)
-            # call two times to check for possible side-effects
-            self.assertFuncEqualOn(partial_fn, fn, **kw) # first
-            self.assertFuncEqualOn(partial_fn, fn, **kw) # second
+        fn = specialized_fn(base_fn, **get_partial_kwargs())
+        partial_fn = functools.partial(base_fn, **get_partial_kwargs())
+        # call two times to check for possible side-effects
+        self.assertFuncEqualOn(partial_fn, fn, **get_kwargs()) # first
+        self.assertFuncEqualOn(partial_fn, fn, **get_kwargs()) # second
 
     def assertFuncEqualOn(self, fn1, fn2, *args, **kwargs):
         ''' Check that functions are the same, or raise the same exception
