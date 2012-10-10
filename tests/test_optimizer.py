@@ -9,25 +9,24 @@ from ast_pe.decorators import pure_function
 
 class BaseOptimizerTestCase(BaseTestCase):
     def _test_opt(self, source, constants, expected_source=None,
-            expected_new_constants=None, print_source=False):
+            expected_new_bindings=None, print_source=False):
         ''' Test that with given constants, optimized_ast transforms
         source to expected_source.
-        It expected_new_constants is given, we expect Optimizer to add
-        them to constants.
+        It :expected_new_bindings: is given, we check that they
+        are among new bindings returned by optimizer.
         '''
         if print_source:
             print ast_to_string(ast.parse(shift_source(source)))
         if expected_source is None:
             expected_source = source
         ast_tree = ast.parse(shift_source(source))
-        self.assertASTEqual(
-                optimized_ast(ast_tree, constants),
-                ast.parse(shift_source(expected_source)))
-        if expected_new_constants:
-            for k in expected_new_constants:
-                if k not in constants:
-                    print 'constants:', constants
-                self.assertEqual(constants[k], expected_new_constants[k])
+        new_ast, bindings = optimized_ast(ast_tree, constants)
+        self.assertASTEqual(new_ast, ast.parse(shift_source(expected_source)))
+        if expected_new_bindings:
+            for k in expected_new_bindings:
+                if k not in bindings:
+                    print 'bindings:', bindings
+                self.assertEqual(bindings[k], expected_new_bindings[k])
 
 
 class TestConstantPropagation(BaseOptimizerTestCase):
@@ -423,7 +422,8 @@ class TestMutation(BaseOptimizerTestCase):
     ''' Test that nodes whose values are known first but are mutated later
     are not substituted with values calculated at compile time.
     '''
-    def test_method_mutation(self):
+    def test_self_mutation_via_method(self):
+        # TODO - corresponding test for specializer
         self._test_opt(
                 '''
                 if x:

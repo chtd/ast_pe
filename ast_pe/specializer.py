@@ -31,6 +31,6 @@ def specialized_ast(fn_ast, *args, **kwargs):
         for kwarg_name, kwarg_value in kwargs.iteritems():
             constants[kwarg_name] = kwarg_value
             fn_args.args.remove(arg_by_id[kwarg_name])
-    return optimized_ast(fn_ast, constants), constants
+    return optimized_ast(fn_ast, constants)
 
 
