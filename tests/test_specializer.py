@@ -42,7 +42,7 @@ class TestSpecializer(BaseTestCase):
     
     def test_mutation_via_method(self):
         def mutty(x, y):
-            x.append(1)
+            x.append('foo')
             return x + [y]
         for x in [[1], [2, [1]]]:
             self._test_partial_fn(mutty, dict(x=x), [{'y': 2}])
