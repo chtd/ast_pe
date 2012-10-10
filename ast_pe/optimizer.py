@@ -77,6 +77,8 @@ class Optimizer(ast.NodeTransformer):
         return self._constants
 
     def generic_visit(self, node):
+        ''' Just some logging
+        '''
         prefix = '--' * self._depth
         logger.debug('%s visit %s', prefix, ast_to_string(node))
         self._depth += 1
@@ -86,11 +88,15 @@ class Optimizer(ast.NodeTransformer):
         return node
     
     def visit_FunctionDef(self, node):
+        ''' Dead code elimination
+        '''
         self.generic_visit(node)
         node.body = self._eliminate_dead_code(node.body)
         return node
 
     def visit_Name(self, node):
+        ''' Replacing known variables with literal values
+        '''
         self.generic_visit(node)
         if isinstance(node.ctx, ast.Load) and node.id in self._constants:
             literal_node = self._get_literal_node(
@@ -100,6 +106,8 @@ class Optimizer(ast.NodeTransformer):
         return node
 
     def visit_If(self, node):
+        ''' Leave only one branch, if possible
+        '''
         node.test = self.visit(node.test)
         is_known, test_value = self._get_node_value_if_known(node.test)
         if is_known:
@@ -115,6 +123,9 @@ class Optimizer(ast.NodeTransformer):
         return node
 
     def visit_Call(self, node):
+        ''' Make a call, if it is a pure function,
+        and handle mutations otherwise
+        '''
         self.generic_visit(node)
         is_known, fn = self._get_node_value_if_known(node.func)
         if is_known and self._is_pure_fn(fn):
@@ -125,7 +136,6 @@ class Optimizer(ast.NodeTransformer):
             if isinstance(node.func, ast.Attribute):
                 # if this a method call, it can mutate "self"
                 obj_node, attr = node.func.value, node.func.attr
-                # TODO - check for pure methods
                 if isinstance(obj_node, ast.Name) \
                         and isinstance(obj_node.ctx, ast.Load):
                     self._mark_mutated_node(obj_node)
@@ -138,6 +148,8 @@ class Optimizer(ast.NodeTransformer):
         return node
     
     def visit_UnaryOp(self, node):
+        ''' Hanle "not" - evaluate if possible
+        '''
         self.generic_visit(node)
         if isinstance(node.op, ast.Not):
             is_known, value = self._get_node_value_if_known(node.operand)
@@ -197,6 +209,10 @@ class Optimizer(ast.NodeTransformer):
         return self._new_binding_node(True, node)
 
     def _visit(self, node):
+        ''' Similar to generic_visit - node can be a list, or an AST node.
+        For list we visit all elements and collect results, also eliminating
+        dead code.
+        '''
         if isinstance(node, list):
             result = []
             for n in node:
@@ -275,6 +291,9 @@ class Optimizer(ast.NodeTransformer):
         return False, None
 
     def _get_literal_node(self, value, replaced_node):
+        ''' If value can be represented as literal value, 
+        return AST node for it
+        '''
         kwargs = dict(lineno=replaced_node.lineno, 
                 col_offset=replaced_node.col_offset)
         if type(value) in self.NUMBER_TYPES:
