@@ -2,8 +2,8 @@
 
 import functools
 
-from ast_pe.utils import BaseTestCase, fn_to_ast
-from ast_pe.specializer import specialized_ast, specialized_fn
+from ast_pe.utils import BaseTestCase
+from ast_pe.specializer import specialized_fn
 
 
 class TestSpecializer(BaseTestCase):
@@ -39,6 +39,13 @@ class TestSpecializer(BaseTestCase):
         kwargs_list = [{'x': v} for v in [0, 1, 0.01, 5e10]]
         for n in ('foo', 0, 1, 2, 3):
             self._test_partial_fn(stupid_power, dict(n=n), kwargs_list)
+    
+    def test_mutation_via_method(self):
+        def mutty(x, y):
+            x.append(1)
+            return x + [y]
+        for x in [[1], [2, [1]]]:
+            self._test_partial_fn(mutty, dict(x=x), [{'y': 2}])
 
     # Utility methods
 
@@ -49,10 +56,10 @@ class TestSpecializer(BaseTestCase):
         '''
         fn = specialized_fn(base_fn, **partial_kwargs)
         for kw in kwargs_list:
-            for _ in xrange(2):
-                self.assertFuncEqualOn(
-                        functools.partial(base_fn, **partial_kwargs),
-                        fn, **kw)
+            partial_fn = functools.partial(base_fn, **partial_kwargs)
+            # call two times to check for possible side-effects
+            self.assertFuncEqualOn(partial_fn, fn, **kw) # first
+            self.assertFuncEqualOn(partial_fn, fn, **kw) # second
 
     def assertFuncEqualOn(self, fn1, fn2, *args, **kwargs):
         ''' Check that functions are the same, or raise the same exception
