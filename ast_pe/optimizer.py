@@ -133,12 +133,19 @@ class Optimizer(ast.NodeTransformer):
             return self._fn_result_node_if_safe(fn, node)
         else:
             # check for mutations from function call:
-            # if we don't know it's pure, it can mutate the arguments TODO
+            # if we don't know it's pure, it can mutate the arguments
+            for arg_node in node.args:
+                if is_load_name(arg_node):
+                    self._mark_mutated_node(arg_node)
+                else:
+                    # TODO - ???
+                    pass
+            # if this a method call, it can also mutate "self"
             if isinstance(node.func, ast.Attribute):
-                # if this a method call, it can mutate "self"
+                # TODO - with proper dataflow analysis and getattr hanling
+                # this code should not be reached
                 obj_node, attr = node.func.value, node.func.attr
-                if isinstance(obj_node, ast.Name) \
-                        and isinstance(obj_node.ctx, ast.Load):
+                if is_load_name(obj_node):
                     self._mark_mutated_node(obj_node)
                 else:
                     # TODO - well, it is hard, cause it can be something like
@@ -293,7 +300,7 @@ class Optimizer(ast.NodeTransformer):
 
     def _get_literal_node(self, value, replaced_node):
         ''' If value can be represented as literal value, 
-        return AST node for it
+        return AST node for it. Literals are never mutable!
         '''
         kwargs = dict(lineno=replaced_node.lineno, 
                 col_offset=replaced_node.col_offset)
@@ -324,7 +331,7 @@ class Optimizer(ast.NodeTransformer):
         ''' Mark that node holding some variable can be mutated, 
         and propagate this information up the dataflow graph
         '''
-        assert isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+        assert is_load_name(node)
         self._mutated_nodes.add(node)
         # TODO - propagate up the dataflow graph
         if node.id in self._constants:
@@ -332,3 +339,7 @@ class Optimizer(ast.NodeTransformer):
             # so we have to rollback here
             del self._constants[node.id]
             raise self.Rollback('%s is mutated' % node.id)
+
+
+def is_load_name(node):
+    return isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)

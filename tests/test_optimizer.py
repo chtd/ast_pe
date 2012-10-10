@@ -423,7 +423,6 @@ class TestMutation(BaseOptimizerTestCase):
     are not substituted with values calculated at compile time.
     '''
     def test_self_mutation_via_method(self):
-        # TODO - corresponding test for specializer
         self._test_opt(
                 '''
                 if x:
@@ -438,4 +437,19 @@ class TestMutation(BaseOptimizerTestCase):
                     bar()
                 ''',
                 dict(x=object()))
-
+    
+    def test_mutation_of_fn_args(self):
+        self._test_opt(
+                '''
+                if x:
+                    bar()
+                ''',
+                dict(x=object()),
+                'bar()')
+        self._test_opt(
+                '''
+                foo(x)
+                if x:
+                    bar()
+                ''',
+                dict(x=object()))
