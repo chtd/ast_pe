@@ -26,8 +26,9 @@ into this (given that n equals e.g. 27)::
         _pow_27 = _pow_26 * x
         return _pow_27
 
-(**FIXME** - well, not quite yet)
-that runs 10 time faster under CPython. 
+that runs 10 time faster under CPython.  Well, really with different 
+temporaty variable names, and right now there are 
+some extra variables that are not used, but it will be fixed soon.
 
 Generaly partial evaluation
 is beneficial if inputs of some function (or a set of functions, or methods)
