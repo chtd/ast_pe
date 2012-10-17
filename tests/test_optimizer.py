@@ -457,3 +457,37 @@ class TestSimpleMutation(BaseOptimizerTestCase):
     def test_leave_fn(self):
         pass # TODO
 
+
+class TestBinaryArithmetic(BaseOptimizerTestCase):
+    def test(self):
+        self._test_opt('1 + 1', {}, '2')
+        self._test_opt('1 + (1 * 67.0)', {}, '68.0')
+        self._test_opt('1 / 2', {}, '0')
+        self._test_opt('1 / 2.0', {}, '0.5')
+        self._test_opt('3 % 2', {}, '1')
+
+
+class TestRecursionInlining(BaseOptimizerTestCase):
+    ''' Recursion inlining test
+    '''
+    def test_no_inlining(self):
+        pass # TODO
+
+    def test_inlining(self):
+        self._test_opt(
+                '''
+                def power(x, n):
+                    if n == 0:
+                        return 1
+                    elif n % 2 == 0:
+                        v = power(x, n / 2)
+                        return v * v
+                    else:
+                        return x * power(x, n - 1)
+                ''',
+                dict(n=1),
+                '''
+                def power(x, n):
+                    return x * 1
+                ''')
+
