@@ -5,8 +5,13 @@ import ast
 import inspect
 import unittest
 import logging
+import warnings
 
 import meta.asttools
+
+
+# ignore warnings about missing lineno and col_offset
+warnings.filterwarnings('ignore', module='meta.asttools.visitors', lineno=47)
 
 
 def fn_to_ast(fn):
@@ -34,6 +39,7 @@ def eval_ast(tree, globals_=None):
     ''' Evaluate AST tree, which sould contain only one root node
     '''
     assert isinstance(tree, ast.Module) and len(tree.body) == 1
+    ast.fix_missing_locations(tree)
     code_object = compile(tree, '<nofile>', 'exec')
     locals_ = {}
     eval(code_object, globals_, locals_)
@@ -59,16 +65,17 @@ def ast_to_string(tree):
 
 
 class BaseTestCase(unittest.TestCase):
-    def assertASTEqual(self, test_ast, expected_ast):
+    def assertASTEqual(self, test_ast, expected_ast, print_ast=False):
         ''' Check that test_ast is equal to expected_ast, 
         printing helpful error message if they are not equal
         '''
         dump1, dump2 = ast.dump(test_ast), ast.dump(expected_ast)
         if dump1 != dump2:
-            print '\n' + '=' * 40 + ' expected ast:\n{expected_ast}\n'\
-                  '\ngot ast:\n{test_ast}\n'.format(
-                          expected_ast=ast_to_string(expected_ast),
-                          test_ast=ast_to_string(test_ast))
+            if print_ast:
+                print '\n' + '=' * 40 + ' expected ast:\n{expected_ast}\n'\
+                    '\ngot ast:\n{test_ast}\n'.format(
+                            expected_ast=ast_to_string(expected_ast),
+                            test_ast=ast_to_string(test_ast))
             print '\n' + '=' * 40 + ' expected source:\n{expected_source}\n'\
                   '\ngot source:\n{test_source}\n'.format(
                           expected_source=ast_to_source(expected_ast),

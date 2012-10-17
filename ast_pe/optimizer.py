@@ -9,7 +9,6 @@ from ast_pe.utils import ast_to_string, get_logger, fn_to_ast
 
 logger = get_logger(__name__, debug=False)
 
-# TODO use fix_missing_locations
 
 def optimized_ast(ast_tree, constants):
     ''' Try running Optimizer until it finishes without rollback.
@@ -136,8 +135,7 @@ class Optimizer(ast.NodeTransformer):
         '''
         self.generic_visit(node)
         if isinstance(node.ctx, ast.Load) and node.id in self._constants:
-            literal_node = self._get_literal_node(
-                    self._constants[node.id], node)
+            literal_node = self._get_literal_node(self._constants[node.id])
             if literal_node is not None:
                 return literal_node
         return node
@@ -148,7 +146,7 @@ class Optimizer(ast.NodeTransformer):
         node.test = self.visit(node.test)
         is_known, test_value = self._get_node_value_if_known(node.test)
         if is_known:
-            pass_ = ast.Pass(lineno=node.lineno, col_offset=node.col_offset)
+            pass_ = ast.Pass()
             taken_node = node.body if test_value else node.orelse
             if taken_node:
                 return self._visit(taken_node) or pass_
@@ -204,7 +202,7 @@ class Optimizer(ast.NodeTransformer):
         if isinstance(node.op, ast.Not):
             is_known, value = self._get_node_value_if_known(node.operand)
             if is_known:
-                return self._new_binding_node(not value, node)
+                return self._new_binding_node(not value)
         return node
 
     def visit_BoolOp(self, node):
@@ -218,14 +216,14 @@ class Optimizer(ast.NodeTransformer):
             if is_known:
                 if isinstance(node.op, ast.And):
                     if not value:
-                        return self._new_binding_node(False, node)
+                        return self._new_binding_node(False)
                 elif isinstance(node.op, ast.Or):
                     if value:
-                        return self._new_binding_node(value, node)
+                        return self._new_binding_node(value)
             else:
                 new_value_nodes.append(value_node)
         if not new_value_nodes:
-            return self._new_binding_node(isinstance(node.op, ast.And), node)
+            return self._new_binding_node(isinstance(node.op, ast.And))
         elif len(new_value_nodes) == 1:
             return new_value_nodes[0]
         else:
@@ -256,8 +254,8 @@ class Optimizer(ast.NodeTransformer):
                     ast.NotEq: lambda : a != b,
                     }[type(op)]()
             if not result:
-                return self._new_binding_node(False, node)
-        return self._new_binding_node(True, node)
+                return self._new_binding_node(False)
+        return self._new_binding_node(True)
     
     def visit_BinOp(self, node):
         ''' Binary arithmetic - + * / etc.
@@ -288,7 +286,7 @@ class Optimizer(ast.NodeTransformer):
                 is_known, r_value = self._get_node_value_if_known(node.right)
                 if can_apply(is_known, r_value):
                     value = operations[type(node.op)](l_value, r_value)
-                    return self._new_binding_node(value, node)
+                    return self._new_binding_node(value)
         return node
 
     def _visit(self, node):
@@ -345,7 +343,7 @@ class Optimizer(ast.NodeTransformer):
             # do not optimize the call away to leave original exception
             return node
         else:
-            return self._new_binding_node(fn_value, node)
+            return self._new_binding_node(fn_value)
     
     def _inlined_fn(self, node):
         ''' Return a list of nodes, representing inlined function call,
@@ -399,34 +397,29 @@ class Optimizer(ast.NodeTransformer):
             return known(node.s)
         return False, None
 
-    def _get_literal_node(self, value, replaced_node):
+    def _get_literal_node(self, value):
         ''' If value can be represented as literal value, 
         return AST node for it. Literals are never mutable!
         '''
-        kwargs = dict(lineno=replaced_node.lineno, 
-                col_offset=replaced_node.col_offset)
         if type(value) in self.NUMBER_TYPES:
-            return ast.Num(value, **kwargs)
+            return ast.Num(value)
         elif type(value) in self.STRING_TYPES:
-            return ast.Str(value, **kwargs)
+            return ast.Str(value)
         elif value is False or value is True:
-            return ast.Name(
-                    id='True' if value else 'False', ctx=ast.Load(), **kwargs)
+            return ast.Name(id='True' if value else 'False', ctx=ast.Load())
     
-    def _new_binding_node(self, value, replaced_node):
+    def _new_binding_node(self, value):
         ''' Generate unique variable name, add it to constants with given value,
         and return the node that loads generated variable.
         '''
-        literal_node = self._get_literal_node(value, replaced_node)
+        literal_node = self._get_literal_node(value)
         if literal_node is not None:
             return literal_node
         else:
             self._var_count += 1
             var_name = '__ast_pe_var_%d' % self._var_count
             self._constants[var_name] = value
-            return ast.Name(id=var_name, ctx=ast.Load(),
-                    lineno=replaced_node.lineno, 
-                    col_offset=replaced_node.col_offset) 
+            return ast.Name(id=var_name, ctx=ast.Load())
 
     def _mark_mutated_node(self, node):
         ''' Mark that node holding some variable can be mutated, 
