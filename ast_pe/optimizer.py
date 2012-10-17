@@ -9,6 +9,7 @@ from ast_pe.utils import ast_to_string, get_logger, fn_to_ast
 
 logger = get_logger(__name__, debug=False)
 
+# TODO use fix_missing_locations
 
 def optimized_ast(ast_tree, constants):
     ''' Try running Optimizer until it finishes without rollback.
@@ -69,6 +70,8 @@ class Optimizer(ast.NodeTransformer):
         self._var_count = 0
         self._depth = 0
         self._mutated_nodes = set()
+        self._current_block = None # None, or a list of nodes that correspond
+        # to currently visited code block
         super(Optimizer, self).__init__()
     
     def get_bindings(self):
@@ -79,12 +82,44 @@ class Optimizer(ast.NodeTransformer):
         return self._constants
 
     def generic_visit(self, node):
-        ''' Just some logging
+        ''' Completly substite parent class "generic_visit", in order to
+        be able to insert some code at the line before current expression
+        (e.g. when inlining functions).
+        Also do some logging.
         '''
         prefix = '--' * self._depth
         logger.debug('%s visit:\n%s', prefix, ast_to_string(node))
         self._depth += 1
-        node = super(Optimizer, self).generic_visit(node)
+        # copy-paste from ast.py, added self._current_block handling 
+        block_fields = ['body', 'orelse'] # TODO more?
+        for field, old_value in ast.iter_fields(node):
+            old_value = getattr(node, field, None)
+            if isinstance(old_value, list):
+                new_values = []
+                if field in block_fields:
+                    parent_block = self._current_block 
+                    self._current_block = new_values 
+                try:
+                    for value in old_value:
+                        if isinstance(value, ast.AST):
+                            value = self.visit(value)
+                            if value is None:
+                                continue
+                            elif not isinstance(value, ast.AST):
+                                new_values.extend(value)
+                                continue
+                        new_values.append(value)
+                    old_value[:] = new_values
+                finally: # restore self._current_block
+                    if field in block_fields:
+                        self._current_block = parent_block
+            elif isinstance(old_value, ast.AST):
+                new_node = self.visit(old_value)
+                if new_node is None:
+                    delattr(node, field)
+                else:
+                    setattr(node, field, new_node)
+        # end of copy-paste
         self._depth -= 1
         logger.debug('%s result:\n%s', prefix, ast_to_string(node))
         return node
@@ -134,7 +169,7 @@ class Optimizer(ast.NodeTransformer):
         if is_known:
             if self._is_inlined_fn(fn):
                 inlined_nodes, result_node = self._inlined_fn(node)
-                # TODO - how do we insert inlined_nodes BEFORE???
+                self._current_block.extend(inlined_nodes)
                 return result_node
             elif self._is_pure_fn(fn):
                 return self._fn_result_node_if_safe(fn, node)
@@ -263,13 +298,18 @@ class Optimizer(ast.NodeTransformer):
         '''
         if isinstance(node, list):
             result = []
-            for n in node:
-                r = self.visit(n)
-                if isinstance(r, list):
-                    result.extend(r)
-                else:
-                    result.append(r)
-            return self._eliminate_dead_code(result)
+            parent_block = self._current_block
+            self._current_block = result
+            try:
+                for n in node:
+                    r = self.visit(n)
+                    if isinstance(r, list):
+                        result.extend(r)
+                    else:
+                        result.append(r)
+                return self._eliminate_dead_code(result)
+            finally:
+                self._current_block = parent_block
         else:
             return self.visit(node)
 
@@ -320,7 +360,8 @@ class Optimizer(ast.NodeTransformer):
         # TODO:
         # mangle locals (including arguments) in fn_ast
         # if there is no single return at the end, simulate it with while loop
-        return [], node
+        # FIXME - here just a simple test
+        return [ast.Expr(node)], node
 
     def _is_pure_fn(self, fn):
         ''' fn has no side effects, and its value is determined only by

@@ -492,11 +492,20 @@ class TestInlining(BaseOptimizerTestCase):
                     a = x.foo()
                     if a:
                         b = a * 10
-                        a = inlined(x) + b
+                        a = b + inlined(x)
                     return a
                 ''',
                 dict(inlined=inlined),
                 '''
+                def outer(x):
+                    a = x.foo()
+                    if a:
+                        b = a * 10
+                        inlined(x)
+                        a = b + inlined(x)
+                    return a
+                ''')
+        '''
                 def outer(x):
                     a = x.foo()
                     if a:
@@ -506,10 +515,10 @@ class TestInlining(BaseOptimizerTestCase):
                         for _ in xrange(__ast_pe_var_1):
                             __ast_pe_var_2.append(__ast_pe_var_1.do_stuff())
                         __ast_pe_var_3 = l
-                        a = __ast_pe_var_3 + b
+                        a = b + __ast_pe_var_3
                     return a
                 '''
-                )
+                #)
 
     def test_complex_return(self):
         def inlined(y):
