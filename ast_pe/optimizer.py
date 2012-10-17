@@ -5,6 +5,7 @@ import ast
 import operator
 
 from ast_pe.utils import ast_to_string, get_logger, fn_to_ast, new_var_name
+from ast_pe.mangler import Mangler
 
 
 logger = get_logger(__name__, debug=False)
@@ -357,6 +358,10 @@ class Optimizer(ast.NodeTransformer):
         #import pdb; pdb.set_trace()
         # TODO:
         # mangle locals (including arguments) in fn_ast
+        mangler = Mangler(self._var_count)
+        mangled_ast = mangler.visit(fn_ast)
+        self._var_count = mangler.get_var_count()
+        # setup locals for a call
         # if there is no single return at the end, simulate it with while loop
         # FIXME - here just a simple test
         return [ast.Expr(node)], node

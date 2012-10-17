@@ -9,7 +9,7 @@ class Mangler(ast.NodeTransformer):
     ''' Mangle all variable names
     '''
     def __init__(self, var_count_start):
-        self._var_count = 0
+        self._var_count = var_count_start
         self._mangled = {} # {original name -> mangled name}
 
     def visit_Name(self, node):
@@ -21,5 +21,11 @@ class Mangler(ast.NodeTransformer):
         else:
             self._var_count += 1
             mangled_id = new_var_name(self._var_count)
+            self._mangled[node.id] = mangled_id
         return ast.Name(id=mangled_id, ctx=node.ctx)
 
+    def get_var_count(self):
+        return self._var_count
+    
+    def get_bindings(self):
+        return self._mangled
