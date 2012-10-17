@@ -459,12 +459,21 @@ class TestSimpleMutation(BaseOptimizerTestCase):
 
 
 class TestBinaryArithmetic(BaseOptimizerTestCase):
-    def test(self):
+    def test_opt(self):
         self._test_opt('1 + 1', {}, '2')
         self._test_opt('1 + (1 * 67.0)', {}, '68.0')
         self._test_opt('1 / 2', {}, '0')
         self._test_opt('1 / 2.0', {}, '0.5')
         self._test_opt('3 % 2', {}, '1')
+        self._test_opt('x / y', dict(x=1, y=2.0), '0.5')
+
+    def test_no_opt(self):
+        class NaN(object):
+            def __init__(self, value):
+                self.value = value
+            def __add__(self, other):
+                return NaN(self.value - other.value)
+        self._test_opt('x + y', dict(x=NaN(1), y=NaN(2)))
 
 
 class TestRecursionInlining(BaseOptimizerTestCase):

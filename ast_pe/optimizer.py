@@ -1,8 +1,9 @@
 # -*- encoding: utf-8 -*-
 
 import __builtin__
-
 import ast
+import operator
+
 from ast_pe.utils import ast_to_string, get_logger
 
 
@@ -191,8 +192,9 @@ class Optimizer(ast.NodeTransformer):
             return node
     
     def visit_Compare(self, node):
-        ''' ==, >, etc. - evaluate only if all are know (FIXME)
+        ''' ==, >, etc. - evaluate only if all are know
         '''
+        # TODO - can evaluate if only some are known
         self.generic_visit(node)
         is_known, value = self._get_node_value_if_known(node.left)
         if not is_known:
@@ -215,6 +217,38 @@ class Optimizer(ast.NodeTransformer):
             if not result:
                 return self._new_binding_node(False, node)
         return self._new_binding_node(True, node)
+    
+    def visit_BinOp(self, node):
+        ''' Binary arithmetic - + * / etc.
+        Evaluate if everything is known.
+        '''
+        self.generic_visit(node)
+        operations = {
+                ast.Add: operator.add,
+                ast.Sub: operator.sub,
+                ast.Mult: operator.mul,
+                ast.Div: operator.div, # TODO - detect truediv!
+                ast.Mod: operator.mod,
+                ast.Pow: operator.pow,
+                ast.LShift: operator.lshift,
+                ast.RShift: operator.rshift,
+                ast.BitOr: operator.or_,
+                ast.BitAnd: operator.and_,
+                ast.BitXor: operator.xor,
+                ast.FloorDiv: operator.floordiv,
+                }
+        # FIXME - call l_value.__add__(r_value), etc.
+        # than we can get rid of NUMBER_TYPES check
+        can_apply = lambda is_known, value: is_known and \
+                type(value) in self.NUMBER_TYPES
+        if type(node.op) in operations:
+            is_known, l_value = self._get_node_value_if_known(node.left)
+            if can_apply(is_known, l_value):
+                is_known, r_value = self._get_node_value_if_known(node.right)
+                if can_apply(is_known, r_value):
+                    value = operations[type(node.op)](l_value, r_value)
+                    return self._new_binding_node(value, node)
+        return node
 
     def _visit(self, node):
         ''' Similar to generic_visit - node can be a list, or an AST node.
