@@ -4,7 +4,8 @@ import __builtin__
 import ast
 import operator
 
-from ast_pe.utils import ast_to_string, get_logger, fn_to_ast, new_var_name
+from ast_pe.utils import ast_to_string, get_logger, fn_to_ast, new_var_name, \
+        get_locals
 from ast_pe.inliner import Inliner
 
 
@@ -353,19 +354,37 @@ class Optimizer(ast.NodeTransformer):
         '''
         is_known, fn = self._get_node_value_if_known(node.func)
         assert is_known
-        fn_ast = fn_to_ast(fn)
-        inliner = Inliner(self._var_count)
+        fn_ast = fn_to_ast(fn).body[0]
+        inliner = Inliner(self._var_count, get_locals(fn_ast))
         fn_ast = inliner.visit(fn_ast)
         self._var_count = inliner.get_var_count()
+
         inlined_body = []
         assert not node.kwargs and not node.starargs # TODO
-        for callee_arg, fn_arg in zip(node.args, fn_ast.args):
+        for callee_arg, fn_arg in zip(node.args, fn_ast.args.args):
             # setup mangled values before call
             inlined_body.append(ast.Assign(
                 targets=[ast.Name(id=fn_arg.id, ctx=ast.Store())],
                 value=ast.Name(id=callee_arg.id, ctx=ast.Load())))
-        inlined_body.extend(fn_ast.body) # inline function body
-        return inlined_body, inliner.get_return_node()
+
+        if isinstance(fn_ast.body[-1], ast.Break): # single return
+            inlined_body.extend(fn_ast.body[:-1])
+        else: # multiple returns - wrap in "while"
+            while_var = new_var_name(self)
+            inlined_body.extend([
+                    ast.Assign(
+                        targets=[ast.Name(id=while_var, ctx=ast.Store())],
+                        value=self._get_literal_node(True)),
+                    ast.While(
+                        test=ast.Name(id=while_var, ctx=ast.Load()),
+                        body=[
+                            ast.Assign(
+                                targets=[ast.Name(id=while_var, ctx=ast.Load())],
+                                value=self._get_literal_node(False))] + 
+                            fn_ast.body)
+                    ])
+        return inlined_body, \
+                ast.Name(id=inliner.get_return_var(), ctx=ast.Load())
 
     def _is_pure_fn(self, fn):
         ''' fn has no side effects, and its value is determined only by

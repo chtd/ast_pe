@@ -8,8 +8,9 @@ from ast_pe.utils import new_var_name
 class Inliner(ast.NodeTransformer):
     ''' Mangle all variable names, returns.
     '''
-    def __init__(self, var_count_start):
+    def __init__(self, var_count_start, fn_locals):
         self._var_count = var_count_start
+        self._locals = fn_locals
         self._mangled = {} # {original name -> mangled name}
         self._return_var = None
         super(Inliner, self).__init__()
@@ -27,18 +28,20 @@ class Inliner(ast.NodeTransformer):
         ''' Replacing known variables with literal values
         '''
         self.generic_visit(node)
-        if node.id in self._mangled:
-            mangled_id = self._mangled[node.id]
+        if node.id in self._locals:
+            if node.id in self._mangled:
+                mangled_id = self._mangled[node.id]
+            else:
+                mangled_id = new_var_name(self)
+                self._mangled[node.id] = mangled_id
+            return ast.Name(id=mangled_id, ctx=node.ctx)
         else:
-            mangled_id = new_var_name(self)
-            self._mangled[node.id] = mangled_id
-        return ast.Name(id=mangled_id, ctx=node.ctx)
+            return node
 
     def visit_Return(self, node):
+        ''' Substitute return with return variable assignment + break
+        '''
         self.generic_visit(node)
-        #from ast_pe.utils import ast_to_string
-        #print ast_to_string(node)
-        #import pdb; pdb.set_trace()
         if self._return_var is None:
             self._return_var = new_var_name(self)
         return [ast.Assign(

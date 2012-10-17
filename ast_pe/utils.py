@@ -98,3 +98,25 @@ def get_logger(name, debug=False):
 def new_var_name(instance):
     instance._var_count += 1
     return '__ast_pe_var_%d' % instance._var_count
+
+
+def get_locals(ast_tree):
+    ''' Return a set of all local variable names in ast tree
+    '''
+    visitor = LocalsVisitor()
+    visitor.visit(ast_tree)
+    return visitor.get_locals()
+
+
+class LocalsVisitor(ast.NodeVisitor):
+    def __init__(self):
+        self._locals = set()
+        super(LocalsVisitor, self).__init__()
+    
+    def visit_Name(self, node):
+        self.generic_visit(node)
+        if isinstance(node.ctx, ast.Store) or isinstance(node.ctx, ast.Param):
+            self._locals.add(node.id)
+
+    def get_locals(self):
+        return self._locals
