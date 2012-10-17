@@ -511,10 +511,11 @@ class TestInlining(BaseOptimizerTestCase):
                 ''')
 
     def test_complex_return(self):
+        @inline
         def inlined(y):
             l = []
-            for _ in xrange(y):
-                l.append(y.do_stuff())
+            for i in iter(y):
+                l.append(i.do_stuff())
             if l:
                 return l
             else:
@@ -535,17 +536,20 @@ class TestInlining(BaseOptimizerTestCase):
                     a = x.foo()
                     if a:
                         b = a * 10
-                        __ast_pe_var_1 = True
-                        while __ast_pe_var_1:
-                            __ast_pe_var_1 = False
-                            l = []
-                            for _ in xrange(y):
-                                l.append(y.do_stuff())
-                            if l:
-                                __ast_pe_var_2 = l
+                        __ast_pe_var_1 = x
+                        __ast_pe_var_5 = True
+                        while __ast_pe_var_5:
+                            __ast_pe_var_5 = False
+                            __ast_pe_var_2 = []
+                            for __ast_pe_var_3 in iter(__ast_pe_var_1):
+                                __ast_pe_var_2.append(__ast_pe_var_3.do_stuff())
+                            if __ast_pe_var_2:
+                                __ast_pe_var_4 = __ast_pe_var_2
+                                break
                             else:
-                                __ast_pe_var_2 = None
-                        a = __ast_pe_var_2 + b
+                                __ast_pe_var_4 = None
+                                break
+                        a = __ast_pe_var_4 + b
                     return a
                 '''
                 )

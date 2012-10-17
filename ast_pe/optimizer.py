@@ -379,9 +379,10 @@ class Optimizer(ast.NodeTransformer):
                         test=ast.Name(id=while_var, ctx=ast.Load()),
                         body=[
                             ast.Assign(
-                                targets=[ast.Name(id=while_var, ctx=ast.Load())],
+                                targets=[ast.Name(id=while_var, ctx=ast.Store())],
                                 value=self._get_literal_node(False))] + 
-                            fn_ast.body)
+                            fn_ast.body,
+                        orelse=[])
                     ])
         return inlined_body, \
                 ast.Name(id=inliner.get_return_var(), ctx=ast.Load())
