@@ -2,7 +2,8 @@
 
 import ast
 
-from ast_pe.utils import BaseTestCase, shift_source, ast_to_string
+from ast_pe.utils import BaseTestCase, shift_source, ast_to_string, \
+        ast_to_source, fn_to_ast
 from ast_pe.optimizer import optimized_ast
 from ast_pe.decorators import pure_function, inline
 
@@ -526,7 +527,7 @@ class TestInlining(BaseOptimizerTestCase):
                     a = x.foo()
                     if a:
                         b = a * 10
-                        a = inlined(x) + b
+                        a = inlined(x - 3) + b
                     return a
                 ''',
                 dict(inlined=inlined),
@@ -536,7 +537,7 @@ class TestInlining(BaseOptimizerTestCase):
                     a = x.foo()
                     if a:
                         b = a * 10
-                        __ast_pe_var_1 = x
+                        __ast_pe_var_1 = x - 3
                         __ast_pe_var_5 = True
                         while __ast_pe_var_5:
                             __ast_pe_var_5 = False
@@ -577,6 +578,15 @@ class TestRecursionInlining(BaseOptimizerTestCase):
                 ''')
 
     def test_inlining(self):
+        @inline 
+        def power(x, n):
+            if n == 0:
+                return 1
+            elif n % 2 == 0:
+                v = power(x, n / 2)
+                return v * v
+            else:
+                return x * power(x, n - 1)
         self._test_opt(
                 '''
                 def power(x, n):
@@ -588,7 +598,7 @@ class TestRecursionInlining(BaseOptimizerTestCase):
                     else:
                         return x * power(x, n - 1)
                 ''',
-                dict(n=1),
+                dict(n=1, power=power),
                 '''
                 def power(x, n):
                     return x * 1

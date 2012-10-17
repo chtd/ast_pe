@@ -365,7 +365,7 @@ class Optimizer(ast.NodeTransformer):
             # setup mangled values before call
             inlined_body.append(ast.Assign(
                 targets=[ast.Name(id=fn_arg.id, ctx=ast.Store())],
-                value=ast.Name(id=callee_arg.id, ctx=ast.Load())))
+                value=callee_arg))
 
         if isinstance(fn_ast.body[-1], ast.Break): # single return
             inlined_body.extend(fn_ast.body[:-1])
