@@ -418,7 +418,7 @@ class TestFunctional(BaseOptimizerTestCase):
             dict(__ast_pe_var_1=range(2)))
 
 
-class TestMutation(BaseOptimizerTestCase):
+class TestSimpleMutation(BaseOptimizerTestCase):
     ''' Test that nodes whose values are known first but are mutated later
     are not substituted with values calculated at compile time.
     '''
@@ -453,3 +453,7 @@ class TestMutation(BaseOptimizerTestCase):
                     bar()
                 ''',
                 dict(x=object()))
+
+    def test_leave_fn(self):
+        pass # TODO
+
