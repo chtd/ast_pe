@@ -4,7 +4,7 @@ import __builtin__
 import ast
 import operator
 
-from ast_pe.utils import ast_to_string, get_logger, fn_to_ast
+from ast_pe.utils import ast_to_string, get_logger, fn_to_ast, new_var_name
 
 
 logger = get_logger(__name__, debug=False)
@@ -417,7 +417,7 @@ class Optimizer(ast.NodeTransformer):
             return literal_node
         else:
             self._var_count += 1
-            var_name = '__ast_pe_var_%d' % self._var_count
+            var_name = new_var_name(self._var_count)
             self._constants[var_name] = value
             return ast.Name(id=var_name, ctx=ast.Load())
 

@@ -93,3 +93,7 @@ def get_logger(name, debug=False):
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     return logger
+
+
+def new_var_name(counter):
+    return '__ast_pe_var_%d' % counter
