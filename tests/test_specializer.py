@@ -4,23 +4,28 @@ import functools
 
 from ast_pe.utils import BaseTestCase
 from ast_pe.specializer import specialized_fn
+from ast_pe.decorators import inline
 
 
 class TestSpecializer(BaseTestCase):
     def test_args_handling(self):
         def args_kwargs(a, b, c=None):
             return 1.0 * a / b * (c or 3)
-        self.assertEqual(specialized_fn(args_kwargs, 1)(2),
+        self.assertEqual(
+                specialized_fn(args_kwargs, globals(), locals(), 1)(2),
                 1.0 / 2 * 3)
-        self.assertEqual(specialized_fn(args_kwargs, 1, 2, 1)(),
+        self.assertEqual(
+                specialized_fn(args_kwargs, globals(), locals(), 1, 2, 1)(),
                 1.0 / 2 * 1)
 
     def test_kwargs_handling(self):
         def args_kwargs(a, b, c=None):
             return 1.0 * a / b * (c or 3)
-        self.assertEqual(specialized_fn(args_kwargs, c=4)(1, 2),
+        self.assertEqual(
+                specialized_fn(args_kwargs, globals(), locals(), c=4)(1, 2),
                 1.0 / 2 * 4)
-        self.assertEqual(specialized_fn(args_kwargs, 2, c=4)(6),
+        self.assertEqual(
+                specialized_fn(args_kwargs, globals(), locals(), 2, c=4)(6),
                 2.0 / 6 * 4)
 
     def test_if_on_stupid_power(self):
@@ -38,23 +43,42 @@ class TestSpecializer(BaseTestCase):
                 return v
         for n in ('foo', 0, 1, 2, 3):
             for x in [0, 1, 0.01, 5e10]:
-                self._test_partial_fn(
-                        stupid_power, lambda : dict(n=n), lambda : {'x': x })
+                self._test_partial_fn(stupid_power, globals(), locals(),
+                        lambda : dict(n=n), lambda : {'x': x })
     
+    def test_if_on_recursive_power(self):
+        @inline
+        def power(n, x):
+            if not isinstance(n, int) or n < 0:
+                raise ValueError('Base should be a positive integer')
+            elif n == 0:
+                return 1
+            elif n % 2 == 0:
+                v = power(x, n / 2)
+                return v * v
+            else:
+                return x * power(x, n - 1)
+        for n in ('foo', 0, 1, 2, 3):
+            for x in [0, 1, 0.01, 5e10]:
+                self._test_partial_fn(power, globals(), locals(),
+                        lambda : dict(n=n), lambda : {'x': x })
+
     def test_mutation_via_method(self):
         def mutty(x, y):
             x.append('foo')
             return x + [y]
-        self._test_partial_fn(mutty, lambda : dict(x=[1]), lambda : {'y': 2 })
+        self._test_partial_fn(mutty, globals(), locals(),
+                lambda : dict(x=[1]), lambda : {'y': 2 })
 
     # Utility methods
 
-    def _test_partial_fn(self, base_fn, get_partial_kwargs, get_kwargs):
+    def _test_partial_fn(self, base_fn, globals_, locals_,
+            get_partial_kwargs, get_kwargs):
         ''' Check that partial evaluation of base_fn with partial_args
         gives the same result on args_list
         as functools.partial(base_fn, partial_args)
         '''
-        fn = specialized_fn(base_fn, **get_partial_kwargs())
+        fn = specialized_fn(base_fn, globals_, locals_, **get_partial_kwargs())
         partial_fn = functools.partial(base_fn, **get_partial_kwargs())
         # call two times to check for possible side-effects
         self.assertFuncEqualOn(partial_fn, fn, **get_kwargs()) # first

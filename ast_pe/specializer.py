@@ -4,14 +4,17 @@ from ast_pe.utils import fn_to_ast, eval_ast
 from ast_pe.optimizer import optimized_ast
 
 
-def specialized_fn(fn, *args, **kwargs):
+def specialized_fn(fn, globals_, locals_, *args, **kwargs):
     ''' Return specialized version of fn, fixing given args and kwargs,
     just as functools.partial does, but specialized function should be faster
     '''
+    assert isinstance(globals_, dict) and isinstance(locals_, dict)
+    globals_.update(locals_)
     # FIXME - grab globals from the module where it is defined
     fn_ast = fn_to_ast(fn)
     specialized_tree, bindings = specialized_ast(fn_ast, *args, **kwargs)
-    return eval_ast(specialized_tree, globals_=bindings) 
+    globals_.update(bindings)
+    return eval_ast(specialized_tree, globals_=globals_) 
 
 
 def specialized_ast(fn_ast, *args, **kwargs):
