@@ -33,10 +33,10 @@ class TestConstantPropagation(BaseOptimizerTestCase):
     def test_constant_propagation(self):
         self._test_opt(
                 'a * n + (m - 2) * (n + 1)', dict(n=5),
-                'a * 5 + (m - 2) * (5 + 1)')
+                'a * 5 + (m - 2) * 6')
         self._test_opt(
                 'a * n + (m - 2) * (n + 1)', dict(n=5.0),
-                'a * 5.0 + (m - 2) * (5.0 + 1)')
+                'a * 5.0 + (m - 2) * 6.0')
         self._test_opt(
                 'foo[:5]', dict(foo="bar"),
                 '"bar"[:5]')
