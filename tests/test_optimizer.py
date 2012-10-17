@@ -476,11 +476,101 @@ class TestBinaryArithmetic(BaseOptimizerTestCase):
         self._test_opt('x + y', dict(x=NaN(1), y=NaN(2)))
 
 
+class TestInlining(BaseOptimizerTestCase):
+    ''' Test simple inlining
+    '''
+    def test_simple_return(self):
+        def inlined(y):
+            l = []
+            for _ in xrange(y):
+                l.append(y.do_stuff())
+            return l
+        self._test_opt(
+                '''
+                def outer(x):
+                    a = x.foo()
+                    if a:
+                        b = a * 10
+                        a = inlined(x) + b
+                    return a
+                ''',
+                dict(inlined=inlined),
+                '''
+                def outer(x):
+                    a = x.foo()
+                    if a:
+                        b = a * 10
+                        __ast_pe_var_1 = x
+                        __ast_pe_var_2 = []
+                        for _ in xrange(__ast_pe_var_1):
+                            __ast_pe_var_2.append(__ast_pe_var_1.do_stuff())
+                        __ast_pe_var_3 = l
+                        a = __ast_pe_var_3 + b
+                    return a
+                '''
+                )
+
+    def test_complex_return(self):
+        def inlined(y):
+            l = []
+            for _ in xrange(y):
+                l.append(y.do_stuff())
+            if l:
+                return l
+            else:
+                return None
+        self._test_opt(
+                '''
+                def outer(x):
+                    a = x.foo()
+                    if a:
+                        b = a * 10
+                        a = inlined(x) + b
+                    return a
+                ''',
+                dict(inlined=inlined),
+                # TODO - there will be more mangling
+                '''
+                def outer(x):
+                    a = x.foo()
+                    if a:
+                        b = a * 10
+                        __ast_pe_var_1 = True
+                        while __ast_pe_var_1:
+                            __ast_pe_var_1 = False
+                            l = []
+                            for _ in xrange(y):
+                                l.append(y.do_stuff())
+                            if l:
+                                __ast_pe_var_2 = l
+                            else:
+                                __ast_pe_var_2 = None
+                        a = __ast_pe_var_2 + b
+                    return a
+                '''
+                )
+
+
 class TestRecursionInlining(BaseOptimizerTestCase):
     ''' Recursion inlining test
     '''
     def test_no_inlining(self):
-        pass # TODO
+        self._test_opt(
+                '''
+                def power(x, n):
+                    if n == 0:
+                        return 1
+                    elif n % 2 == 0:
+                        v = power(x, n / 2)
+                        return v * v
+                    else:
+                        return x * power(x, n - 1)
+                ''',
+                dict(n=1),
+                '''
+                def power(x, n):
+                    return x * power(x, 0)
+                ''')
 
     def test_inlining(self):
         self._test_opt(
