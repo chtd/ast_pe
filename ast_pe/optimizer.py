@@ -366,6 +366,10 @@ class Optimizer(ast.NodeTransformer):
             inlined_body.append(ast.Assign(
                 targets=[ast.Name(id=fn_arg.id, ctx=ast.Store())],
                 value=callee_arg))
+            is_known, value = self._get_node_value_if_known(callee_arg)
+            if is_known:
+                # TODO - check that mutations are detected
+                self._constants[fn_arg.id] = value
 
         if isinstance(fn_ast.body[-1], ast.Break): # single return
             inlined_body.extend(fn_ast.body[:-1])

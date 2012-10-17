@@ -531,7 +531,6 @@ class TestInlining(BaseOptimizerTestCase):
                     return a
                 ''',
                 dict(inlined=inlined),
-                # TODO - there will be more mangling
                 '''
                 def outer(x):
                     a = x.foo()
