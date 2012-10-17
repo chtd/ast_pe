@@ -3,11 +3,11 @@
 import ast
 
 from ast_pe.utils import BaseTestCase, shift_source
-from ast_pe.mangler import Mangler
+from ast_pe.inliner import Inliner
 
 
-class TestMangler(BaseTestCase):
-    def test(self):
+class TestInliner(BaseTestCase):
+    def test_mutiple_returns(self):
         source = '''
         def f(x, y, z='foo'):
             if x:
@@ -21,14 +21,17 @@ class TestMangler(BaseTestCase):
         def f(__ast_pe_var_4, __ast_pe_var_5, __ast_pe_var_6='foo'):
             if __ast_pe_var_4:    
                 __ast_pe_var_7 = (__ast_pe_var_5 + __ast_pe_var_4)
-                return __ast_pe_var_7
+                __ast_pe_var_8 = __ast_pe_var_7
+                break
             else:    
-                return __ast_pe_var_6
+                __ast_pe_var_8 = __ast_pe_var_6
+                break
         '''
-        mangler = Mangler(3)
+        mangler = Inliner(3)
         new_ast = mangler.visit(ast_tree)
         self.assertASTEqual(new_ast, ast.parse(shift_source(expected_source)))
-        self.assertEqual(mangler.get_var_count(), 7)
+        self.assertEqual(mangler.get_var_count(), 8)
+        self.assertEqual(mangler.get_return_var(), '__ast_pe_var_8')
         self.assertEqual(mangler.get_bindings(), {
             'x': '__ast_pe_var_4',
             'y': '__ast_pe_var_5',

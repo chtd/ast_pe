@@ -5,7 +5,7 @@ import ast
 import operator
 
 from ast_pe.utils import ast_to_string, get_logger, fn_to_ast, new_var_name
-from ast_pe.mangler import Mangler
+from ast_pe.inliner import Inliner
 
 
 logger = get_logger(__name__, debug=False)
@@ -173,6 +173,7 @@ class Optimizer(ast.NodeTransformer):
             elif self._is_pure_fn(fn):
                 return self._fn_result_node_if_safe(fn, node)
         else:
+            assert not node.kwargs and not node.starargs # TODO
             # check for mutations from function call:
             # if we don't know it's pure, it can mutate the arguments
             for arg_node in node.args:
@@ -353,18 +354,18 @@ class Optimizer(ast.NodeTransformer):
         is_known, fn = self._get_node_value_if_known(node.func)
         assert is_known
         fn_ast = fn_to_ast(fn)
-        print ast_to_string(fn_ast)
-        print ast_to_string(node)
-        #import pdb; pdb.set_trace()
-        # TODO:
-        # mangle locals (including arguments) in fn_ast
-        mangler = Mangler(self._var_count)
-        mangled_ast = mangler.visit(fn_ast)
-        self._var_count = mangler.get_var_count()
-        # setup locals for a call
-        # if there is no single return at the end, simulate it with while loop
-        # FIXME - here just a simple test
-        return [ast.Expr(node)], node
+        inliner = Inliner(self._var_count)
+        fn_ast = inliner.visit(fn_ast)
+        self._var_count = inliner.get_var_count()
+        inlined_body = []
+        assert not node.kwargs and not node.starargs # TODO
+        for callee_arg, fn_arg in zip(node.args, fn_ast.args):
+            # setup mangled values before call
+            inlined_body.append(ast.Assign(
+                targets=[ast.Name(id=fn_arg.id, ctx=ast.Store())],
+                value=ast.Name(id=callee_arg.id, ctx=ast.Load())))
+        inlined_body.extend(fn_ast.body) # inline function body
+        return inlined_body, inliner.get_return_node()
 
     def _is_pure_fn(self, fn):
         ''' fn has no side effects, and its value is determined only by
@@ -421,8 +422,7 @@ class Optimizer(ast.NodeTransformer):
         if literal_node is not None:
             return literal_node
         else:
-            self._var_count += 1
-            var_name = new_var_name(self._var_count)
+            var_name = new_var_name(self)
             self._constants[var_name] = value
             return ast.Name(id=var_name, ctx=ast.Load())
 
