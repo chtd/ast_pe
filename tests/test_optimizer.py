@@ -598,8 +598,12 @@ class TestRecursionInlining(BaseOptimizerTestCase):
                         return x * power(x, n - 1)
                 ''',
                 dict(n=1, power=power),
+                # TODO - we can do better!
                 '''
                 def power(x, n):
-                    return x * 1
+                    __ast_pe_var_1 = x
+                    __ast_pe_var_2 = 0
+                    __ast_pe_var_3 = 1
+                    return (x * __ast_pe_var_3)
                 ''')
 

@@ -370,9 +370,11 @@ class Optimizer(ast.NodeTransformer):
             if is_known:
                 # TODO - check that mutations are detected
                 self._constants[fn_arg.id] = value
+        
+        inlined_code = self._visit(fn_ast.body) # optimize inlined code
 
-        if isinstance(fn_ast.body[-1], ast.Break): # single return
-            inlined_body.extend(fn_ast.body[:-1])
+        if isinstance(inlined_code[-1], ast.Break): # single return
+            inlined_body.extend(inlined_code[:-1])
         else: # multiple returns - wrap in "while"
             while_var = new_var_name(self)
             inlined_body.extend([
@@ -385,7 +387,7 @@ class Optimizer(ast.NodeTransformer):
                             ast.Assign(
                                 targets=[ast.Name(id=while_var, ctx=ast.Store())],
                                 value=self._get_literal_node(False))] + 
-                            fn_ast.body,
+                            inlined_code,
                         orelse=[])
                     ])
         return inlined_body, \
