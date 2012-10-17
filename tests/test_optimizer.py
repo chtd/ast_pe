@@ -4,7 +4,7 @@ import ast
 
 from ast_pe.utils import BaseTestCase, shift_source, ast_to_string
 from ast_pe.optimizer import optimized_ast
-from ast_pe.decorators import pure_function
+from ast_pe.decorators import pure_function, inline
 
 
 class BaseOptimizerTestCase(BaseTestCase):
@@ -480,6 +480,7 @@ class TestInlining(BaseOptimizerTestCase):
     ''' Test simple inlining
     '''
     def test_simple_return(self):
+        @inline
         def inlined(y):
             l = []
             for _ in xrange(y):

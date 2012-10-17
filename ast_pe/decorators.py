@@ -9,3 +9,9 @@ def pure_function(fn):
     fn._ast_pe_is_pure = True
     return fn
 
+
+def inline(fn):
+    ''' Mark that it is safe to inline this function in all call sites
+    '''
+    fn._ast_pe_inline = True
+    return fn

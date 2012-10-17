@@ -4,7 +4,7 @@ import __builtin__
 import ast
 import operator
 
-from ast_pe.utils import ast_to_string, get_logger
+from ast_pe.utils import ast_to_string, get_logger, fn_to_ast
 
 
 logger = get_logger(__name__, debug=False)
@@ -126,12 +126,18 @@ class Optimizer(ast.NodeTransformer):
 
     def visit_Call(self, node):
         ''' Make a call, if it is a pure function,
-        and handle mutations otherwise
+        and handle mutations otherwise.
+        Inline function if it is marked with @inline.
         '''
         self.generic_visit(node)
         is_known, fn = self._get_node_value_if_known(node.func)
-        if is_known and self._is_pure_fn(fn):
-            return self._fn_result_node_if_safe(fn, node)
+        if is_known:
+            if self._is_inlined_fn(fn):
+                inlined_nodes, result_node = self._inlined_fn(node)
+                # TODO - how do we insert inlined_nodes BEFORE???
+                return result_node
+            elif self._is_pure_fn(fn):
+                return self._fn_result_node_if_safe(fn, node)
         else:
             # check for mutations from function call:
             # if we don't know it's pure, it can mutate the arguments
@@ -300,6 +306,21 @@ class Optimizer(ast.NodeTransformer):
             return node
         else:
             return self._new_binding_node(fn_value, node)
+    
+    def _inlined_fn(self, node):
+        ''' Return a list of nodes, representing inlined function call,
+        and a node, repesenting the variable that stores result.
+        '''
+        is_known, fn = self._get_node_value_if_known(node.func)
+        assert is_known
+        fn_ast = fn_to_ast(fn)
+        print ast_to_string(fn_ast)
+        print ast_to_string(node)
+        #import pdb; pdb.set_trace()
+        # TODO:
+        # mangle locals (including arguments) in fn_ast
+        # if there is no single return at the end, simulate it with while loop
+        return [], node
 
     def _is_pure_fn(self, fn):
         ''' fn has no side effects, and its value is determined only by
@@ -313,6 +334,11 @@ class Optimizer(ast.NodeTransformer):
                 return True
             # TODO - or analyze fn body
             return False
+    
+    def _is_inlined_fn(self, fn):
+        ''' fn should be inlined
+        '''
+        return bool(getattr(fn, '_ast_pe_inline', False))
 
     def _get_node_value_if_known(self, node):
         ''' Return tuple of boolean(value is know), and value itself
