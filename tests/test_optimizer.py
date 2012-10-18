@@ -588,6 +588,7 @@ class TestRecursionInlining(BaseOptimizerTestCase):
                 return x * power(x, n - 1)
         # FIXME - cant use meta.asttools here - it is buggy
         source = '''
+                @inline
                 def power(x, n):
                     if n == 0:
                         return 1
@@ -601,6 +602,7 @@ class TestRecursionInlining(BaseOptimizerTestCase):
                 dict(n=1, power=power),
                 # TODO - we can do better!
                 '''
+                @inline
                 def power(x, n):
                     __ast_pe_var_1 = x
                     __ast_pe_var_2 = 0
@@ -611,6 +613,7 @@ class TestRecursionInlining(BaseOptimizerTestCase):
                 dict(n=5, power=power),
                 # TODO - we can do better!
                 '''
+                @inline
                 def power(x, n):
                     __ast_pe_var_1 = x
                     __ast_pe_var_2 = 4

@@ -48,7 +48,7 @@ class TestSpecializer(BaseTestCase):
     
     def test_if_on_recursive_power(self):
         @inline
-        def power(n, x):
+        def power(x, n):
             if not isinstance(n, int) or n < 0:
                 raise ValueError('Base should be a positive integer')
             elif n == 0:
