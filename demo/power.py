@@ -25,4 +25,6 @@ power_5 = specialized_fn(power, globals(), locals(), n=5)
 
 print power_5(2)
 
+power_27 = specialized_fn(power, globals(), locals(), n=27)
 
+print power_27(2)
