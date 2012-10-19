@@ -375,9 +375,7 @@ class Optimizer(ast.NodeTransformer):
                 # TODO - check that mutations are detected
                 self._constants[fn_arg.id] = value
         
-        # FIXME - what should go first?
         inlined_code = self._visit(fn_ast.body) # optimize inlined code
-        remove_assignments(fn_ast.body)
 
         if isinstance(inlined_code[-1], ast.Break): # single return
             inlined_body.extend(inlined_code[:-1])
@@ -396,8 +394,13 @@ class Optimizer(ast.NodeTransformer):
                             inlined_code,
                         orelse=[])
                     ])
-        return inlined_body, \
-                ast.Name(id=inliner.get_return_var(), ctx=ast.Load())
+
+        all_nodes = inlined_body + \
+                [ast.Name(id=inliner.get_return_var(), ctx=ast.Load())]
+        remove_assignments(all_nodes)
+
+        return all_nodes[:-1], all_nodes[-1]
+                
 
     def _is_pure_fn(self, fn):
         ''' fn has no side effects, and its value is determined only by

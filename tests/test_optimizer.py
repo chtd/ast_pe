@@ -502,12 +502,10 @@ class TestInlining(BaseOptimizerTestCase):
                     a = x.foo()
                     if a:
                         b = a * 10
-                    __ast_pe_var_1 = x
                     __ast_pe_var_2 = []
-                    for __ast_pe_var_3 in xrange(__ast_pe_var_1):
-                        __ast_pe_var_2.append(__ast_pe_var_1.do_stuff())
-                    __ast_pe_var_4 = __ast_pe_var_2
-                    a = b + __ast_pe_var_4
+                    for __ast_pe_var_3 in xrange(x):    
+                        __ast_pe_var_2.append(x.do_stuff())
+                    a = (b + __ast_pe_var_2)
                     return a
                 ''')
 
@@ -604,10 +602,7 @@ class TestRecursionInlining(BaseOptimizerTestCase):
                 '''
                 @inline
                 def power(x, n):
-                    __ast_pe_var_1 = x
-                    __ast_pe_var_2 = 0
-                    __ast_pe_var_3 = 1
-                    return (x * __ast_pe_var_3)
+                    return (x * 1)
                 ''')
         self._test_opt(source,
                 dict(n=5, power=power),
@@ -615,20 +610,9 @@ class TestRecursionInlining(BaseOptimizerTestCase):
                 '''
                 @inline
                 def power(x, n):
-                    __ast_pe_var_1 = x
-                    __ast_pe_var_2 = 4
-                    __ast_pe_var_5 = __ast_pe_var_1
-                    __ast_pe_var_6 = 2
-                    __ast_pe_var_9 = __ast_pe_var_5
-                    __ast_pe_var_10 = 1
-                    __ast_pe_var_13 = __ast_pe_var_9
-                    __ast_pe_var_14 = 0
-                    __ast_pe_var_15 = 1
-                    __ast_pe_var_11 = (__ast_pe_var_9 * __ast_pe_var_15)
-                    __ast_pe_var_8 = __ast_pe_var_11
-                    __ast_pe_var_7 = (__ast_pe_var_8 * __ast_pe_var_8)
-                    __ast_pe_var_4 = __ast_pe_var_7
-                    __ast_pe_var_3 = (__ast_pe_var_4 * __ast_pe_var_4)
+                    __ast_pe_var_11 = (x * 1)
+                    __ast_pe_var_7 = (__ast_pe_var_11 * __ast_pe_var_11)
+                    __ast_pe_var_3 = (__ast_pe_var_7 * __ast_pe_var_7)
                     return x * __ast_pe_var_3
                 ''')
 

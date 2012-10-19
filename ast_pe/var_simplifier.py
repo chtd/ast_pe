@@ -3,22 +3,34 @@
 import ast
 from meta.asttools import get_symbols
 
+from ast_pe.utils import ast_to_string
+
+
 
 def remove_assignments(node_list):
     ''' Remove one assigment at a time, touching only top level block (???)
     '''
-    for node in list(node_list):
-        if isinstance(node, ast.Assign):
-            can_remove, var_name, value_node = \
-                    _can_remove_assignment(node, node_list)
-            if can_remove:
-                node_list.remove(node)
-                new_nodes = []
-                for n in list(node_list):
-                    new_n = Replacer(var_name, value_node).visit(n)
-                    if new_n is not None:
-                        new_nodes.append(new_n)
-                node_list[:] = new_nodes
+    idx = 0
+    while idx <= len(node_list) - 1:
+        node = node_list[idx]
+        removed = _maybe_remove(node, node_list)
+        if not removed:
+            idx += 1
+
+
+def _maybe_remove(node, node_list):
+    if isinstance(node, ast.Assign):
+        can_remove, var_name, value_node = \
+                _can_remove_assignment(node, node_list)
+        if can_remove:
+            node_list.remove(node)
+            new_nodes = []
+            for n in list(node_list):
+                new_n = Replacer(var_name, value_node).visit(n)
+                if new_n is not None:
+                    new_nodes.append(new_n)
+            node_list[:] = new_nodes
+            return True
 
 
 def _can_remove_assignment(assign_node, node_list):
