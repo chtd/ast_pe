@@ -5,6 +5,7 @@ Partial evaluation on AST level
 This library allows you perform code specialization at run-time,
 turning this::
 
+    @inline
     def power(x, n):
         if n == 0:
             return 1
@@ -26,9 +27,8 @@ into this (given that n equals e.g. 27)::
         _pow_27 = _pow_26 * x
         return _pow_27
 
-that runs 10 time faster under CPython.  Well, really with different 
-temporaty variable names, and right now there are 
-some extra variables that are not used, but it will be fixed soon.
+that runs 10 time faster under CPython (variable names changed
+to increase readability).
 
 Generaly, partial evaluation
 is beneficial if inputs of some function (or a set of functions, or methods)
@@ -38,16 +38,24 @@ and use it to process dynamic input. For example, for an interpreter
 *static input* is the program, and *dynamic input* is the input to that program.
 Partial evaluation turns interpreter into a compiler, which runs much faster.
 
-The API is very simple, almost identical to ``functools.partial``::
+The API is almost identical to ``functools.partial``::
     
     import ast_pe
-    power_27 = ast_pe.specialized_fn(power, n=27)
+    power_27 = ast_pe.specialized_fn(power, globals(), locals(), n=27)
+
+You have to pass globals and locals right now, so the specializer
+knowns the environment where specialized function was defined.
+
+You must mark functions that you want inlined (maybe recursively)
+with ``ast_pe.decorators.inline``. If some function or methods
+operates on your static input, you can benefit from marking it as pure
+using ``ast_pe.decorators.pure_fn`` (if it is really pure).
 
 **TODO**
 Or you can make the library make all the bookkeeping for you, creating
 specialized versions and using them as meeded by the following decorator::
     
-    @ast_pe.specialize_on('n')
+    @ast_pe.specialize_on('n', globals(), locals())
     def power(x, n):
         ...
 
@@ -60,7 +68,7 @@ compiler optimizations, using known variable values:
 * constant propagation
 * constant folding
 * dead-code elimination
-* loop unrolling 
+* loop unrolling (**TODO** - not yet)
 * function inlining
 
 But here this optimizations can really make a difference, because
@@ -68,9 +76,8 @@ your function can heavily depend on a known at specialization input,
 and so specialized function might have quite a different control flow,
 as in the ``power(x, n)`` example.
 
-In order to allow function inlining, you have to mark it as pure 
-(having no side-effects) using ``pure_fn`` decorator. 
-Variable mutation and assigment is handled gracefully (**FIXME** not yet).
+Variable mutation and assigment is handled gracefully (**TODO** 
+right now only in the simplest cases).
 
 Tests
 =====
