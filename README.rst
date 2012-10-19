@@ -30,7 +30,7 @@ that runs 10 time faster under CPython.  Well, really with different
 temporaty variable names, and right now there are 
 some extra variables that are not used, but it will be fixed soon.
 
-Generaly partial evaluation
+Generaly, partial evaluation
 is beneficial if inputs of some function (or a set of functions, or methods)
 can be decomposed into *static* (seldom changing) and *dynamic*. Than we
 create specialied version of the algorithm for each encoutered static input,
