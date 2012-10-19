@@ -363,6 +363,9 @@ class Optimizer(ast.NodeTransformer):
         assert not node.kwargs and not node.starargs # TODO
         for callee_arg, fn_arg in zip(node.args, fn_ast.args.args):
             # setup mangled values before call
+            # TODO - if callee_arg is "simple" - literal or name,
+            # and is never assigned in inlined_body
+            # then do not make an assignment, just use it in inlined_body
             inlined_body.append(ast.Assign(
                 targets=[ast.Name(id=fn_arg.id, ctx=ast.Store())],
                 value=callee_arg))
