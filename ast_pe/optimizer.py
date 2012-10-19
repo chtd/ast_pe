@@ -7,6 +7,7 @@ import operator
 from ast_pe.utils import ast_to_string, get_logger, fn_to_ast, new_var_name, \
         get_locals
 from ast_pe.inliner import Inliner
+from ast_pe.var_simplifier import remove_assignments
 
 
 logger = get_logger(__name__, debug=False)
@@ -374,7 +375,9 @@ class Optimizer(ast.NodeTransformer):
                 # TODO - check that mutations are detected
                 self._constants[fn_arg.id] = value
         
+        # FIXME - what should go first?
         inlined_code = self._visit(fn_ast.body) # optimize inlined code
+        remove_assignments(fn_ast.body)
 
         if isinstance(inlined_code[-1], ast.Break): # single return
             inlined_body.extend(inlined_code[:-1])
